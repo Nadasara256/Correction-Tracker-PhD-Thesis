@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Thesis Tracker">
+<meta name="apple-mobile-web-app-title" content="Correction Tracker">
 <title>PhD Thesis Correction Tengku Sarah</title>
 <style>
 :root{
@@ -207,6 +207,76 @@ nav{background:var(--card-a);-webkit-backdrop-filter:blur(8px);backdrop-filter:b
 .pill.doing{background:var(--warn-soft);color:var(--warn)}
 .val{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--bg-a);white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px}
 .val.none{color:var(--mut);font-style:italic}
+/* ---- progress report (preview + print to PDF) ---- */
+#rptwrap{position:fixed;inset:0;z-index:70;background:#e4e8e6;overflow:auto;-webkit-overflow-scrolling:touch;color:#14201e}
+.rptbar{position:sticky;top:0;z-index:3;display:flex;gap:8px;align-items:center;padding:10px 12px;background:#0e6a62;color:#fff}
+.rptbar .rtt{flex:1;font-weight:800;font-size:16px}
+.rptbar button{border:1px solid rgba(255,255,255,.55);background:transparent;color:#fff;border-radius:10px;padding:8px 14px;min-height:42px;font-weight:700;font-size:15px}
+.rptbar button.go{background:#f3e3b4;color:#0b3d38;border-color:#f3e3b4}
+.rptopt{max-width:820px;margin:10px auto 0;padding:0 12px;font-size:14px}
+.rptopt .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.rptopt select{font:inherit;padding:8px;border-radius:8px;border:1px solid #b9c4c1;background:#fff;color:#14201e;max-width:100%}
+.rptopt label{display:flex;align-items:center;gap:8px}
+.rptopt input[type=checkbox]{width:20px;height:20px;accent-color:#0e6a62}
+.rptopt p{margin:0;color:#44524f}
+.rpt{background:#fff;color:#14201e;max-width:820px;margin:10px auto 24px;padding:22px 20px;font:13.5px/1.42 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;box-shadow:0 2px 10px rgba(0,0,0,.12);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.rpt *{box-sizing:border-box}
+.rpt h1{font-size:25px;margin:2px 0 2px;line-height:1.15}
+.rpt h2{font-size:15px;margin:20px 0 8px;padding-bottom:4px;border-bottom:2px solid #0e6a62;color:#0e6a62;break-after:avoid;text-transform:uppercase;letter-spacing:.04em}
+.rpt h3{font-size:14.5px;margin:16px 0 6px;break-after:avoid;display:flex;gap:8px;align-items:baseline}
+.rpt h3 .c{margin-left:auto;font-weight:700;color:#44524f;font-size:12.5px;white-space:nowrap}
+.rpt h4{font-size:13px;margin:10px 0 4px;color:#33423f;break-after:avoid;display:flex;gap:8px}
+.rpt h4 .c{margin-left:auto;color:#5b6a67;font-weight:600;white-space:nowrap}
+.rpt .rh{border-bottom:3px solid #b8892b;padding-bottom:10px}
+.rpt .rk{font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#0e6a62}
+.rpt .rm{color:#44524f;font-size:13px}
+.rpt .rstats{display:flex;gap:10px;margin-top:14px}
+.rpt .rst{flex:1;border:1px solid #cfd8d5;border-radius:10px;padding:10px 12px;break-inside:avoid;background:#f5f8f7}
+.rpt .rn{font-size:13px;color:#44524f}.rpt .rn b{font-size:26px;color:#14201e;line-height:1.1}
+.rpt .rl{font-size:12px;color:#44524f;margin-bottom:6px}
+.rpt .rbar{height:7px;border-radius:99px;background:#d9e2df;overflow:hidden}
+.rpt .rbar i{display:block;height:100%;background:#0e6a62;border-radius:99px}
+.rpt .rkd div{padding:2px 0}
+.rpt .rtw{overflow-x:auto}
+.rpt .rtw.kt{break-inside:avoid}
+.rpt table{width:100%;border-collapse:collapse;font-size:12px}
+.rpt th{background:#0e6a62;color:#fff;text-align:left;padding:5px 7px;font-weight:700}
+.rpt td{border-bottom:1px solid #dde5e2;padding:5px 7px;vertical-align:top;overflow-wrap:anywhere}
+.rpt tr{break-inside:avoid}
+.rpt thead{display:table-header-group}
+.rpt td.n,.rpt th.n{text-align:right;white-space:nowrap}
+.rpt table.rs{table-layout:fixed;min-width:620px}
+.rpt table.rs th:nth-child(1){width:7%}.rpt table.rs th:nth-child(2){width:29%}.rpt table.rs th:nth-child(3){width:23%}
+.rpt table.rs th:nth-child(4){width:23%}.rpt table.rs th:nth-child(5){width:9%}.rpt table.rs th:nth-child(6){width:9%}
+.rpt .tag{display:inline-block;border-radius:99px;padding:1px 8px;font-size:11px;font-weight:800;white-space:nowrap;background:#e6ecea;color:#44524f}
+.rpt .tag.ok{background:#d4efe0;color:#0b5a32}.rpt .tag.bad{background:#fadbd8;color:#9a2418}
+.rpt .tag.now{background:#fbeccb;color:#7a5200}.rpt .tag.doing{background:#d6e6fa;color:#1b4f8a}
+.rpt .wk{margin-bottom:8px}
+.rpt .wkh{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:#eef3f1;border-left:4px solid #0e6a62;padding:5px 8px;break-after:avoid}
+.rpt .wkh .d{color:#5b6a67;font-size:12px}.rpt .wkh .c{margin-left:auto;font-weight:700}
+.rpt .tk{display:flex;gap:8px;padding:3px 4px 3px 8px;border-bottom:1px solid #edf1ef;break-inside:avoid}
+.rpt .tk.dn .t{color:#5b6a67}
+.rpt .bx{flex:none;width:12px;height:12px;border:1.5px solid #5b6a67;border-radius:3px;margin-top:3px;position:relative}
+.rpt .bx.on{background:#0e6a62;border-color:#0e6a62}
+.rpt .bx.on::after{content:"";position:absolute;left:3px;top:0;width:3px;height:7px;border:solid #fff;border-width:0 1.8px 1.8px 0;transform:rotate(45deg)}
+.rpt .nt{display:block;margin-top:2px;color:#6a5200;font-size:12px;font-style:italic}
+.rpt .foot{margin-top:22px;color:#6a7774;font-size:11.5px;border-top:1px solid #cfd8d5;padding-top:8px}
+.rpt .pbk{break-before:page}
+.rpt .none{color:#5b6a67;font-style:italic}
+@page{size:A4;margin:13mm 12mm 15mm}
+@page{@bottom-center{content:counter(page) " / " counter(pages);font:9pt system-ui,sans-serif;color:#666}}
+@media print{
+  body.rptopen>*:not(#rptwrap){display:none!important}
+  body.rptopen::before{display:none!important}
+  body.rptopen,body.rptopen.lock{overflow:visible!important;height:auto!important;background:#fff!important}
+  body.rptopen #rptwrap{position:static;overflow:visible;background:#fff}
+  body.rptopen .rptbar,body.rptopen .rptopt{display:none!important}
+  body.rptopen .rpt{margin:0;max-width:none;padding:0;box-shadow:none;font-size:10pt}
+  body.rptopen .rpt h1{font-size:21pt}
+  body.rptopen .rpt table{font-size:8.6pt}
+  body.rptopen .rpt table.rs{min-width:0}
+  body.rptopen .rpt .rtw{overflow:visible}
+}
 </style>
 </head>
 <body>
@@ -451,15 +521,17 @@ function confirmSheet(title,msg,okLabel,fn,danger){
       el('button',{class:'btn '+(danger?'bad':'pri'),text:okLabel,onclick:function(){close();fn();}})));
   });
 }
-function textSheet(title,text,note){
+function textSheet(title,text,note,shareTitle){
   openSheet(title,function(box,close){
     if(note)box.append(el('p',{class:'muted small',text:note,style:'margin-bottom:8px'}));
     var ta=el('textarea',{class:'mono',value:text,readonly:true});
     box.append(ta);
     var msg=el('p',{class:'small muted',style:'margin:6px 0'});
     box.append(msg);
+    var canShare=!!(shareTitle&&navigator.share);
     box.append(el('div',{class:'acts'},
-      el('button',{class:'btn pri',text:'Copy all',onclick:function(){copyText(text,ta,msg);}}),
+      canShare?el('button',{class:'btn pri',text:'Share…',onclick:function(){navigator.share({title:shareTitle,text:text}).catch(function(){});}}):null,
+      el('button',{class:'btn'+(canShare?'':' pri'),text:'Copy all',onclick:function(){copyText(text,ta,msg);}}),
       el('button',{class:'btn',text:'Close',onclick:close})));
   });
 }
@@ -837,21 +909,6 @@ function copyGroup(g){
 }
 
 /* ---------- SETTINGS / BACKUP ---------- */
-function summaryText(){
-  var t=today(),L=[];
-  var tl=allTimelineTasks(),cl=allChecklistItems(),rs=[];state.response.forEach(function(g){rs=rs.concat(g.rows);});
-  L.push('PhD thesis corrections: progress on '+fmtY(t));
-  L.push('Timeline: '+tl.filter(function(x){return x.done;}).length+'/'+tl.length+' tasks');
-  L.push('Checklist: '+cl.filter(function(x){return x.done;}).length+'/'+cl.length+' items');
-  L.push('Responses to examiners: '+rs.filter(rowDone).length+'/'+rs.length+' comments');
-  L.push('');
-  state.keyDates.filter(function(k){return k.count;}).forEach(function(k){var d=diffDays(t,k.date);L.push(k.label+': '+fmtY(k.date)+' ('+(d>=0?d+' days left':'passed')+')');});
-  L.push('');L.push('Timeline by block:');
-  state.weeks.forEach(function(w){var i=weekInfo(w,t);L.push((i.complete?'[x] ':(i.overdue?'[!] ':'[ ] '))+w.title+' ('+range(w.start,w.end)+') '+i.done+'/'+i.total);});
-  var open=[];state.weeks.forEach(function(w){var i=weekInfo(w,t);if(i.overdue)w.tasks.forEach(function(x){if(!x.done)open.push('- '+x.t+' ['+w.title+']');});});
-  if(open.length){L.push('');L.push('Overdue tasks:');L=L.concat(open);}
-  return L.join('\n');
-}
 function backupObj(){return {app:'thesis-corrections-tracker',v:1,exported:new Date().toISOString(),state:state};}
 function backupName(){return 'thesis-tracker-backup-'+today()+'.json';}
 function downloadBackup(){
@@ -900,8 +957,14 @@ function openSettings(){
     var fi=el('input',{type:'file',accept:'.json,application/json',style:'display:none',onchange:function(e){var f=e.target.files[0];if(f){close();importBackup(f);}}});
     box.append(fi,el('div',{class:'acts',style:'margin-top:8px'},el('button',{class:'btn',text:'Restore from a backup file',onclick:function(){fi.click();}})));
     box.append(el('hr'));
-    box.append(el('h3',{text:'Share progress (view only)',style:'font-size:15px;margin-bottom:6px'}));
-    box.append(el('p',{class:'small muted',style:'margin-bottom:6px',text:'Makes a copy of this app as it is right now that cannot be edited. Send it to your supervisors and they open it on their phone. It is a snapshot: it does not update by itself, so send a new one when you want to show newer progress.'}));
+    box.append(el('h3',{text:'Share progress with supervisors',style:'font-size:15px;margin-bottom:6px'}));
+    box.append(el('p',{class:'small muted',style:'margin-bottom:8px',text:'Best for iPhones. A PDF or a text message opens on any phone with nothing to install. Both show your progress as of today.'}));
+    box.append(el('div',{class:'acts'},
+      el('button',{class:'btn pri',text:'PDF progress report',onclick:function(){close();openReport();}}),
+      el('button',{class:'btn',text:'Text summary',onclick:function(){close();textSheet('Progress summary',summaryText(),'Share it to WhatsApp or email, or copy and paste it.','PhD thesis correction progress');}})));
+    box.append(el('hr'));
+    box.append(el('h3',{text:'View-only app copy (Android and computers)',style:'font-size:15px;margin-bottom:6px'}));
+    box.append(el('p',{class:'small muted',style:'margin-bottom:6px',text:'A copy of this app that cannot be edited. iPhones usually cannot open it from a message, so use the PDF above for them. It is a snapshot and does not update by itself.'}));
     var incl=el('input',{type:'checkbox'});
     box.append(el('label',{class:'chk'},incl,'Include my private notes (off by default)'));
     box.append(el('div',{class:'acts'},
@@ -909,7 +972,6 @@ function openSettings(){
       el('button',{class:'btn'+(navigator.canShare?'':' pri'),text:'Save view-only copy',onclick:function(){downloadSnapshot(incl.checked);}})));
     box.append(el('hr'));
     box.append(el('div',{class:'acts'},
-      el('button',{class:'btn',text:'Progress summary (text)',onclick:function(){close();textSheet('Progress summary',summaryText(),'Copy this into your doc or a message to your supervisors.');}}),
       el('button',{class:'btn',text:'Key dates',onclick:function(){close();editKeyDates();}})));
     var tsel=field(box,'Appearance','select',state.ui.theme||'auto',{options:[['auto','Match phone'],['light','Light'],['dark','Dark']]});
     tsel.addEventListener('change',function(){state.ui.theme=tsel.value;applyTheme();save(true);});
@@ -961,6 +1023,161 @@ function editKeyDate(i){
       close();save(true);render();}})));
     if(!isNew)box.append(el('div',{class:'acts'},el('button',{class:'btn sm bad',text:'Delete',onclick:function(){close();withUndo('Date deleted',function(){state.keyDates.splice(i,1);});}})));
   });
+}
+
+/* ---------- progress report (PDF through print) and text summary ---------- */
+function pct(d,t){return t?Math.round(d*100/t):0;}
+function ownerName(){return (state.meta&&state.meta.owner)||'Tengku Sarah';}
+function allRows(){var r=[];state.response.forEach(function(g){r=r.concat(g.rows);});return r;}
+function nDone(list){return list.filter(function(x){return x.done;}).length;}
+function stCount(rows){var c={todo:0,doing:0,done:0,na:0};rows.forEach(function(r){c[c.hasOwnProperty(r.st)?r.st:'todo']++;});return c;}
+function weekTag(w,t){var i=weekInfo(w,t);return i.complete?['Complete','ok']:(i.overdue?['Overdue','bad']:(i.pos==='now'?['Current','now']:['Upcoming','']));}
+function cut(s,n){s=String(s||'').replace(/\s+/g,' ').trim();return s.length>n?s.slice(0,n-1).replace(/\s+\S*$/,'')+'…':s;}
+function keyDatesSorted(){return state.keyDates.filter(function(k){return k.count;}).slice().sort(function(a,b){return a.date<b.date?-1:(a.date>b.date?1:0);});}
+function dLeft(t,date){var d=diffDays(t,date);return d>0?d+' days left':(d===0?'today':'passed');}
+
+function summaryText(){
+  var t=today(),L=[];
+  var tl=allTimelineTasks(),cl=allChecklistItems(),rr=allRows();
+  var td=nDone(tl),cd=nDone(cl),rd=rr.filter(rowDone).length;
+  L.push('PhD thesis corrections: progress report');
+  L.push(ownerName()+' (USIM) · as of '+DOW[parse(t).getDay()]+' '+fmtY(t));
+  L.push('');
+  L.push('OVERALL');
+  L.push('• Timeline tasks: '+td+'/'+tl.length+' ('+pct(td,tl.length)+'%)');
+  L.push('• Checklist items: '+cd+'/'+cl.length+' ('+pct(cd,cl.length)+'%)');
+  L.push('• Examiner comments answered: '+rd+'/'+rr.length+' ('+pct(rd,rr.length)+'%)');
+  var kd=keyDatesSorted();
+  if(kd.length){L.push('');L.push('KEY DATES');kd.forEach(function(k){L.push('• '+k.label+': '+fmtY(k.date)+' ('+dLeft(t,k.date)+')');});}
+  var f=focusWeek(t);
+  if(f){
+    var w=state.weeks.filter(function(x){return x.id===f.id;})[0],wi=weekInfo(w,t);
+    L.push('');L.push((f.kind==='now'?'THIS WEEK':'UP NEXT')+': '+w.title+' ('+range(w.start,w.end)+') '+wi.done+'/'+wi.total);
+    var open=w.tasks.filter(function(x){return !x.done;});
+    open.slice(0,6).forEach(function(x){L.push('☐ '+cut(x.t,110));});
+    if(open.length>6)L.push('… and '+(open.length-6)+' more');
+  }
+  var od=[];state.weeks.forEach(function(w){if(weekInfo(w,t).overdue)w.tasks.forEach(function(x){if(!x.done)od.push('⚠ '+cut(x.t,110)+' ['+w.title+']');});});
+  if(od.length){L.push('');L.push('OVERDUE');od.slice(0,10).forEach(function(s){L.push(s);});if(od.length>10)L.push('… and '+(od.length-10)+' more');}
+  L.push('');L.push('TIMELINE BY BLOCK');
+  state.weeks.forEach(function(w){var i=weekInfo(w,t);L.push((i.complete?'✔ ':(i.overdue?'⚠ ':'☐ '))+w.title+' ('+range(w.start,w.end)+') '+i.done+'/'+i.total);});
+  L.push('');L.push('EXAMINER COMMENTS BY GROUP');
+  state.response.forEach(function(g){var c=stCount(g.rows);L.push('• '+g.name+': '+(c.done+c.na)+'/'+g.rows.length+' answered'+(c.doing?', '+c.doing+' in progress':''));});
+  L.push('');L.push('CHECKLIST BY PART');
+  state.checklist.forEach(function(p){var its=partItems(p);if(its.length)L.push('• '+p.title+': '+nDone(its)+'/'+its.length);});
+  return L.join('\n');
+}
+
+function rbar(d,t){return el('div',{class:'rbar'},el('i',{style:'width:'+pct(d,t)+'%'}));}
+function rtable(cols,rows,cls,numCols){
+  var th=el('tr');cols.forEach(function(c,i){th.append(el('th',{text:c,class:numCols&&numCols.indexOf(i)>=0?'n':null}));});
+  var tb=el('tbody');
+  rows.forEach(function(r){var tr=el('tr');r.forEach(function(c,i){tr.append(el('td',{class:numCols&&numCols.indexOf(i)>=0?'n':null},c));});tb.append(tr);});
+  return el('div',{class:'rtw'+(cls==='rs'?'':' kt')},el('table',{class:cls||''},el('thead',null,th),tb));
+}
+function rtag(p){return el('span',{class:'tag'+(p[1]?' '+p[1]:''),text:p[0]});}
+var RSTAG={todo:['To do',''],doing:['Doing','doing'],done:['Done','ok'],na:['No action','']};
+
+function reportEl(o){
+  var t=today(),R=el('div',{class:'rpt'});
+  var tl=allTimelineTasks(),cl=allChecklistItems(),rr=allRows();
+  var td=nDone(tl),cd=nDone(cl),rd=rr.filter(rowDone).length;
+  R.append(el('div',{class:'rh'},
+    el('div',{class:'rk',text:'PhD thesis corrections · progress report'}),
+    el('h1',{text:ownerName()}),
+    el('div',{class:'rm',text:'Universiti Sains Islam Malaysia (USIM) · Progress as of '+DOW[parse(t).getDay()]+' '+fmtY(t)})));
+  var st=el('div',{class:'rstats'});
+  [['Timeline tasks',td,tl.length],['Checklist items',cd,cl.length],['Examiner comments answered',rd,rr.length]].forEach(function(s){
+    st.append(el('div',{class:'rst'},el('div',{class:'rn'},el('b',{text:s[1]}),' / '+s[2]),el('div',{class:'rl',text:s[0]+' · '+pct(s[1],s[2])+'%'}),rbar(s[1],s[2])));});
+  R.append(st);
+
+  var kd=keyDatesSorted();
+  if(kd.length){var box=el('div');kd.forEach(function(k){box.append(el('div',{style:'padding:2px 0'},el('b',{text:k.label}),': '+fmtY(k.date)+' ('+dLeft(t,k.date)+')'));});R.append(el('h2',{text:'Key dates'}),box);}
+
+  var f=focusWeek(t);
+  if(f){
+    var fw=state.weeks.filter(function(x){return x.id===f.id;})[0],fi=weekInfo(fw,t);
+    R.append(el('h2',{text:f.kind==='now'?'This week':'Up next'}));
+    R.append(el('div',null,el('b',{text:fw.title}),' · '+range(fw.start,fw.end)+' · '+fi.done+'/'+fi.total+' done'));
+    var op=fw.tasks.filter(function(x){return !x.done;});
+    if(op.length){var ob=el('div',{style:'margin-top:4px'});op.slice(0,8).forEach(function(x){ob.append(el('div',{class:'tk'},el('span',{class:'bx'}),el('div',{class:'t',text:cut(x.t,160)})));});
+      if(op.length>8)ob.append(el('div',{class:'none',style:'padding:3px 8px',text:'… and '+(op.length-8)+' more in this block'}));R.append(ob);}
+  }
+
+  R.append(el('h2',{text:'Timeline by block'}));
+  R.append(rtable(['Block','Dates','Status','Done'],state.weeks.map(function(w){var i=weekInfo(w,t);return [w.title,range(w.start,w.end),rtag(weekTag(w,t)),i.done+'/'+i.total];}),'',[3]));
+
+  R.append(el('h2',{text:'Examiner comments by group'}));
+  R.append(rtable(['Group','Answered','Doing','To do','Total'],state.response.map(function(g){var c=stCount(g.rows);return [g.name,String(c.done+c.na),String(c.doing),String(c.todo),String(g.rows.length)];}),'',[1,2,3,4]));
+
+  R.append(el('h2',{text:'Checklist by part'}));
+  R.append(rtable(['Part','Done'],state.checklist.map(function(p){var its=partItems(p);return [p.title,its.length?nDone(its)+'/'+its.length:'(reference only)'];}),'',[1]));
+
+  function note(x){return o.notes&&x.note?el('span',{class:'nt',text:'Note: '+x.note}):null;}
+  if(o.full){
+    var first=true;
+    var h2=function(txt){var h=el('h2',{text:txt,class:first?'pbk':null});first=false;return h;};
+    R.append(h2('Detail: timeline'));
+    state.weeks.forEach(function(w){
+      var i=weekInfo(w,t);
+      var wk=el('div',{class:'wk'},el('div',{class:'wkh'},el('b',{text:w.title}),el('span',{class:'d',text:range(w.start,w.end)}),rtag(weekTag(w,t)),el('span',{class:'c',text:i.done+'/'+i.total})));
+      w.tasks.forEach(function(x){
+        var tg=!x.done&&(x.st==='doing'||x.st==='blocked')?el('span',{class:'tag '+(x.st==='blocked'?'bad':'doing'),text:x.st==='blocked'?'Blocked':'Doing',style:'margin-left:6px'}):null;
+        wk.append(el('div',{class:'tk'+(x.done?' dn':'')},el('span',{class:'bx'+(x.done?' on':'')}),el('div',{class:'t'},x.t,tg,note(x))));
+      });
+      R.append(wk);
+    });
+
+    R.append(h2('Detail: checklist'));
+    state.checklist.forEach(function(p){
+      var secs=[p].concat(p.subs),any=false;
+      secs.forEach(function(s){if(sectionLists(s).some(function(b){return b.items.length;}))any=true;});
+      if(!any)return;
+      var its=partItems(p);
+      R.append(el('h3',null,p.title,el('span',{class:'c',text:nDone(its)+'/'+its.length})));
+      secs.forEach(function(s,si){
+        var items=[];sectionLists(s).forEach(function(b){items=items.concat(b.items);});
+        if(!items.length)return;
+        if(si>0)R.append(el('h4',null,s.title,el('span',{class:'c',text:nDone(items)+'/'+items.length})));
+        items.forEach(function(x){R.append(el('div',{class:'tk'+(x.done?' dn':'')},el('span',{class:'bx'+(x.done?' on':'')}),el('div',{class:'t'},x.t,note(x))));});
+      });
+    });
+
+    R.append(h2('Detail: responses to examiners'));
+    state.response.forEach(function(g){
+      var c=stCount(g.rows);
+      R.append(el('h3',null,g.name,el('span',{class:'c',text:(c.done+c.na)+'/'+g.rows.length+' answered'})));
+      R.append(rtable(['No.','Comment','Action required','Correction made','Location','Status'],g.rows.map(function(r){
+        return [r.no,el('span',null,r.comment,note(r)),r.action||'',r.made||'',r.loc||'',rtag(RSTAG[r.st]||RSTAG.todo)];
+      }),'rs'));
+    });
+  }
+  R.append(el('div',{class:'foot',text:'Generated from the Correction Tracker app on '+fmtY(t)+'. '+(o.notes?'Includes private notes.':'Private notes are not included.')}));
+  return R;
+}
+
+function openReport(){
+  var old=document.getElementById('rptwrap');if(old)old.remove();
+  var o={full:true,notes:false};
+  var wrap=el('div',{id:'rptwrap',role:'dialog','aria-modal':'true'});
+  var page=el('div');
+  function draw(){page.textContent='';page.append(reportEl(o));}
+  function close(){wrap.remove();document.body.classList.remove('rptopen');if(!document.getElementById('layer').children.length)document.body.classList.remove('lock');window.scrollTo(0,0);}
+  function go(){
+    if(!window.print){toast('This browser cannot print or save PDFs.');return;}
+    try{window.print();}catch(e){toast('Could not open the print screen.');}
+  }
+  var sel=el('select',{onchange:function(){o.full=sel.value==='full';draw();}},
+    el('option',{value:'full',text:'Overview + full detail'}),el('option',{value:'one',text:'Overview only (short)'}));
+  var cb=el('input',{type:'checkbox',onchange:function(){o.notes=cb.checked;draw();}});
+  wrap.append(
+    el('div',{class:'rptbar'},el('button',{text:'‹ Back',onclick:close}),el('div',{class:'rtt',text:'Progress report'}),el('button',{class:'go',text:'Save as PDF',onclick:go})),
+    el('div',{class:'rptopt'},
+      el('div',{class:'row'},el('label',null,'Contents ',sel),el('label',null,cb,'Include my private notes')),
+      el('p',{text:'Tap “Save as PDF”. On the print screen, set the destination to “Save as PDF”, tap the PDF button, then attach the saved file in WhatsApp or email. iPhones open PDFs directly.'})),
+    page);
+  draw();
+  document.body.append(wrap);document.body.classList.add('rptopen','lock');wrap.scrollTop=0;
 }
 
 /* ---------- view-only copy ---------- */
