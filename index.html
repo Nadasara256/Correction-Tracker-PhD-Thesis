@@ -279,12 +279,44 @@ nav{background:var(--card-a);-webkit-backdrop-filter:blur(8px);backdrop-filter:b
 }
 .credit{text-align:center;font-weight:700;font-style:italic;font-size:15px;letter-spacing:.01em;color:var(--mut);opacity:.85;margin:20px 0 10px;user-select:none;-webkit-user-select:none}
 @media print{.credit{display:none}}
+/* ---- More tab, chart, search, entries ---- */
+.ch{width:100%;height:auto;display:block}
+.lg{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:12.5px;color:var(--mut);margin-top:6px}
+.lg i{display:inline-block;width:16px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.ent{border-top:1px solid var(--line);padding:10px 0}
+.ent:first-child{border-top:0;padding-top:2px}
+.ent .top{display:flex;gap:8px;align-items:flex-start}
+.ent .top b{flex:1;line-height:1.3}
+.ent .meta{font-size:13px;color:var(--mut);margin-top:3px}
+.ent .res{margin-top:4px;white-space:pre-wrap}
+.ent .nt{margin-top:4px;font-size:13px;color:var(--mut);font-style:italic}
+.ent .fn{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:var(--soft);padding:1px 6px;border-radius:6px;overflow-wrap:anywhere}
+.ent .task{padding-top:6px}
+.srh{font-size:12px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--acc);margin:12px 2px 4px}
+.sr{display:block;width:100%;text-align:left;border:1px solid var(--line);background:var(--card);border-radius:12px;padding:9px 12px;margin-bottom:6px;color:var(--ink);min-height:44px}
+.sr .x{font-size:14.5px;line-height:1.35}
+.sr .w{font-size:12.5px;color:var(--mut);margin-top:2px}
+.rpt .rchart{max-width:540px;margin-top:6px}
+.rpt table.rsa{table-layout:fixed;min-width:620px}
+.rpt table.rsa th:nth-child(1){width:7%}.rpt table.rsa th:nth-child(2){width:41%}.rpt table.rsa th:nth-child(3){width:34%}.rpt table.rsa th:nth-child(4){width:18%}
+@page resp{size:A4 landscape;margin:12mm 12mm 14mm}
+.rpt.resp{page:resp}
+@media print{body.rptopen .rpt.resp table.rsa{min-width:0}}
+/* ---- settings sheet header and grid ---- */
+.shd{display:flex;align-items:center;gap:10px;position:sticky;top:-16px;z-index:3;background:var(--card);padding:16px 16px 8px;margin:-16px -16px 4px;border-radius:18px 18px 0 0}
+.shd h3{flex:1;margin:0!important}
+.xbtn{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--card);display:grid;place-items:center;flex:none;color:var(--ink);padding:0}
+.xbtn svg{width:20px;height:20px}
+.acts.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
+.acts.grid2 .btn{width:100%;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.25}
+.credit.sm{font-size:13px;margin:22px 0 4px;font-weight:600}
 </style>
 </head>
 <body>
 <header>
   <div class="ttl"><h1>PhD Thesis Correction Tengku Sarah</h1><div class="sub" id="today"></div></div>
   <div class="save" id="save"><i class="dot"></i><span>Saved</span></div>
+  <button class="iconbtn" id="srch" aria-label="Search"></button>
   <button class="iconbtn" id="gear" aria-label="Settings and backup"></button>
 </header>
 <main id="main"></main>
@@ -348,7 +380,10 @@ var ICON={
   chev:'<path d="M9 6l6 6-6 6"/>',
   check:'<path d="M4 12l5 5L20 6"/>',
   eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
-  pen:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>'
+  pen:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>',
+  close:'<path d="M6 6l12 12M18 6L6 18"/>',
+  more:'<circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>'
 };
 function icon(n,cls){
   var s=document.createElementNS('http://www.w3.org/2000/svg','svg');
@@ -436,6 +471,7 @@ function save(now){
 function doSave(){
   if(RO)return;
   clearTimeout(saveTimer);
+  recordHist();
   var s=JSON.stringify(state);
   if(storageOK){
     try{maybeSnap();localStorage.setItem(KEY,s);lastSaved=s;lastSaveTime=Date.now();}
@@ -622,13 +658,6 @@ function timelineView(){
   }
   root.append(card);
 
-  var days=Math.floor((Date.now()-(state.meta.lastBackup||0))/864e5);
-  if(!RO&&(state.meta.lastBackup?days>=7:dn>0)){
-    root.append(el('div',{class:'warnbox'},
-      el('b',{text:state.meta.lastBackup?'Last backup was '+days+' days ago. ':'No backup yet. '}),
-      'Phone browsers can clear saved data. ',
-      el('a',{href:'#',style:'color:inherit;font-weight:700',onclick:function(e){e.preventDefault();openSettings();}},'Back up now')));
-  }
   root.append(glance(t));
 
   var f=focusWeek(t);
@@ -838,6 +867,7 @@ function responseView(){
   var sel=el('select',{onchange:function(e){ui.rsStatus=e.target.value;save();render();}});
   [['ALL','All statuses'],['open','Not finished'],['todo','To do'],['doing','Doing'],['done','Done'],['na','No action']].forEach(function(o){var op=el('option',{value:o[0],text:o[1]});if(ui.rsStatus===o[0])op.selected=true;sel.append(op);});
   root.append(el('div',{class:'seg2'},sel));
+  if(!RO)root.append(el('div',{class:'tools'},el('button',{class:'btn sm',text:'Save responses as PDF',onclick:function(){openReport('resp');}})));
 
   var shown=0;
   state.response.forEach(function(g,gi){
@@ -947,22 +977,27 @@ function applyTheme(){
 }
 function openSettings(){
   openSheet('Settings and backup',function(box,close){
+    var h3=box.firstChild,hd=el('div',{class:'shd'});
+    box.insertBefore(hd,h3);hd.append(h3,el('button',{class:'xbtn','aria-label':'Close',onclick:close},icon('close')));
     var st=el('div',{class:'warnbox'+(storageOK?'':' bad'),style:'margin-bottom:12px'});
     if(storageOK)st.append(el('b',{text:'Saving on this phone: working. '}),'Last saved '+(lastSaveTime?new Date(lastSaveTime).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}):'(no changes yet this session)')+'.');
     else st.append(el('b',{text:'This browser is not saving changes. '}),'Opening the file straight from a file manager or a download notification often causes this. Open Chrome and type file:///storage/emulated/0/Download/ then tap the file, or keep using the app and press “Save backup” before you close it. Reason: '+storageErr);
     box.append(st);
     var lb=state.meta.lastBackup;
     box.append(el('p',{class:'small muted',style:'margin-bottom:8px',text:'Last backup: '+(lb?new Date(lb).toLocaleString():'never')}));
-    box.append(el('div',{class:'acts'},
-      el('button',{class:'btn pri',text:'Save backup file',onclick:function(){downloadBackup();}}),
-      (navigator.canShare?el('button',{class:'btn',text:'Share backup…',onclick:function(){shareBackup();}}):null)));
+    var emp=SEED&&SEED.empty;
     var fi=el('input',{type:'file',accept:'.json,application/json',style:'display:none',onchange:function(e){var f=e.target.files[0];if(f){close();importBackup(f);}}});
-    box.append(fi,el('div',{class:'acts',style:'margin-top:8px'},el('button',{class:'btn',text:'Restore from a backup file',onclick:function(){fi.click();}})));
+    box.append(fi,el('div',{class:'acts grid2'},
+      el('button',{class:'btn pri',text:'Save backup file',onclick:function(){downloadBackup();}}),
+      (navigator.canShare?el('button',{class:'btn',text:'Share backup…',onclick:function(){shareBackup();}}):null),
+      el('button',{class:'btn',text:'Restore from a backup file',onclick:function(){fi.click();}}),
+      el('button',{class:'btn bad',text:emp?'Clear all data on this phone':'Reset to the original plan',onclick:function(){close();confirmSheet(emp?'Clear everything?':'Reset everything?',emp?'This removes all your data from this phone. You would need to import your data file again. Save a backup first if unsure.':'All ticks, notes and edits are replaced by the original plan from your doc. Save a backup first if unsure.',emp?'Clear':'Reset',function(){withUndo(emp?'Data cleared':'Reset to original plan',function(){state=clone(SEED);});},true);}})));
     box.append(el('hr'));
     box.append(el('h3',{text:'Share progress with supervisors',style:'font-size:15px;margin-bottom:6px'}));
     box.append(el('p',{class:'small muted',style:'margin-bottom:8px',text:'Best for iPhones. A PDF or a text message opens on any phone with nothing to install. Both show your progress as of today.'}));
     box.append(el('div',{class:'acts'},
-      el('button',{class:'btn pri',text:'PDF progress report',onclick:function(){close();openReport();}}),
+      el('button',{class:'btn pri',text:'PDF progress report',onclick:function(){close();openReport('full');}}),
+      el('button',{class:'btn',text:'Examiner response PDF',onclick:function(){close();openReport('resp');}}),
       el('button',{class:'btn',text:'Text summary',onclick:function(){close();textSheet('Progress summary',summaryText(),'Share it to WhatsApp or email, or copy and paste it.','PhD thesis correction progress');}})));
     box.append(el('hr'));
     box.append(el('h3',{text:'View-only app copy (Android and computers)',style:'font-size:15px;margin-bottom:6px'}));
@@ -974,6 +1009,7 @@ function openSettings(){
       el('button',{class:'btn'+(navigator.canShare?'':' pri'),text:'Save view-only copy',onclick:function(){downloadSnapshot(incl.checked);}})));
     box.append(el('hr'));
     box.append(el('div',{class:'acts'},
+      el('button',{class:'btn',text:'Calendar reminders',onclick:function(){close();openCalendarExport();}}),
       el('button',{class:'btn',text:'Key dates',onclick:function(){close();editKeyDates();}})));
     var tsel=field(box,'Appearance','select',state.ui.theme||'auto',{options:[['auto','Match phone'],['light','Light'],['dark','Dark']]});
     tsel.addEventListener('change',function(){state.ui.theme=tsel.value;applyTheme();save(true);});
@@ -991,10 +1027,7 @@ function openSettings(){
           el('button',{class:'btn sm',text:'Restore',onclick:function(){close();confirmSheet('Restore this copy?','Replaces everything now in the app with the copy from the start of '+fmtY(s.d)+'.','Restore',function(){withUndo('Copy restored',function(){state=JSON.parse(s.s);});},false);}})));
       });
     }
-    box.append(el('hr'));
-    box.append(el('div',{class:'acts'},
-      el('button',{class:'btn bad',text:(SEED&&SEED.empty)?'Clear all data on this phone':'Reset to the original plan',onclick:function(){close();var emp=SEED&&SEED.empty;confirmSheet(emp?'Clear everything?':'Reset everything?',emp?'This removes all your data from this phone. You would need to import your data file again. Save a backup first if unsure.':'All ticks, notes and edits are replaced by the original plan from your doc. Save a backup first if unsure.',emp?'Clear':'Reset',function(){withUndo(emp?'Data cleared':'Reset to original plan',function(){state=clone(SEED);});},true);}}),
-      el('button',{class:'btn',text:'Close',onclick:close})));
+    box.append(el('div',{class:'credit sm',text:'© 2026 @nadasara256. All rights reserved.'}));
   });
 }
 function editKeyDates(){
@@ -1092,6 +1125,8 @@ function reportEl(o){
   [['Timeline tasks',td,tl.length],['Checklist items',cd,cl.length],['Examiner comments answered',rd,rr.length]].forEach(function(s){
     st.append(el('div',{class:'rst'},el('div',{class:'rn'},el('b',{text:s[1]}),' / '+s[2]),el('div',{class:'rl',text:s[0]+' · '+pct(s[1],s[2])+'%'}),rbar(s[1],s[2])));});
   R.append(st);
+  var chart=progressChart(true);
+  if(chart&&Object.keys(state.hist).length>=2){R.append(el('h2',{text:'Progress over time'}),el('div',{class:'rchart'},chart,legendEl()),el('p',{style:'margin:6px 0 0',text:paceText()}));}
 
   var kd=keyDatesSorted();
   if(kd.length){var box=el('div');kd.forEach(function(k){box.append(el('div',{style:'padding:2px 0'},el('b',{text:k.label}),': '+fmtY(k.date)+' ('+dLeft(t,k.date)+')'));});R.append(el('h2',{text:'Key dates'}),box);}
@@ -1158,28 +1193,423 @@ function reportEl(o){
   return R;
 }
 
-function openReport(){
+function respReportEl(o){
+  var t=today(),R=el('div',{class:'rpt resp'}),rr=allRows(),rd=rr.filter(rowDone).length;
+  R.append(el('div',{class:'rh'},
+    el('div',{class:'rk',text:'PhD thesis corrections'}),
+    el('h1',{text:'Response to Examiners'}),
+    el('div',{class:'rm',text:ownerName()+' · Universiti Sains Islam Malaysia (USIM) · '+fmtY(t)+' · '+rd+' of '+rr.length+' comments answered'})));
+  var sub=o.cols==='sub',shown=0;
+  state.response.forEach(function(g){
+    var rows=g.rows.filter(function(r){return !(o.open&&rowDone(r));});
+    if(!rows.length)return;
+    shown++;
+    var c=stCount(g.rows);
+    R.append(el('h3',null,g.name,el('span',{class:'c',text:(c.done+c.na)+'/'+g.rows.length+' answered'})));
+    if(sub)R.append(rtable(['No.','Examiner comment','Correction made','Location (before → after)'],rows.map(function(r){return [r.no,r.comment,r.made||'',r.loc||''];}),'rsa'));
+    else R.append(rtable(['No.','Comment','Action required','Correction made','Location','Status'],rows.map(function(r){return [r.no,r.comment,r.action||'',r.made||'',r.loc||'',rtag(RSTAG[r.st]||RSTAG.todo)];}),'rs'));
+  });
+  if(!shown)R.append(el('p',{class:'none',text:'Every comment is answered, so there is nothing to list with this filter.'}));
+  R.append(el('div',{class:'foot',text:'Generated from the Correction Tracker app on '+fmtY(t)+'.'}));
+  return R;
+}
+
+function openReport(kind){
+  kind=kind==='resp'?'resp':'full';
   var old=document.getElementById('rptwrap');if(old)old.remove();
-  var o={full:true,notes:false};
+  var o=kind==='resp'?{cols:'sub',open:false}:{full:true,notes:false};
   var wrap=el('div',{id:'rptwrap',role:'dialog','aria-modal':'true'});
   var page=el('div');
-  function draw(){page.textContent='';page.append(reportEl(o));}
+  function draw(){page.textContent='';page.append(kind==='resp'?respReportEl(o):reportEl(o));}
   function close(){wrap.remove();document.body.classList.remove('rptopen');if(!document.getElementById('layer').children.length)document.body.classList.remove('lock');window.scrollTo(0,0);}
   function go(){
     if(!window.print){toast('This browser cannot print or save PDFs.');return;}
     try{window.print();}catch(e){toast('Could not open the print screen.');}
   }
-  var sel=el('select',{onchange:function(){o.full=sel.value==='full';draw();}},
-    el('option',{value:'full',text:'Overview + full detail'}),el('option',{value:'one',text:'Overview only (short)'}));
-  var cb=el('input',{type:'checkbox',onchange:function(){o.notes=cb.checked;draw();}});
+  var row=el('div',{class:'row'}),help;
+  if(kind==='resp'){
+    var sel=el('select',{onchange:function(){o.cols=sel.value;draw();}},
+      el('option',{value:'sub',text:'Submission style: comment, correction made, location'}),
+      el('option',{value:'full',text:'Full table: also action required and status'}));
+    var cb=el('input',{type:'checkbox',onchange:function(){o.open=cb.checked;draw();}});
+    row.append(el('label',null,'Columns ',sel),el('label',null,cb,'Only comments not finished yet'));
+    help='This one prints sideways (landscape) so the table is easy to read. Tap “Save as PDF”, set the destination to “Save as PDF” on the print screen, tap the PDF button, then attach the saved file.';
+  }else{
+    var sel2=el('select',{onchange:function(){o.full=sel2.value==='full';draw();}},
+      el('option',{value:'full',text:'Overview + full detail'}),el('option',{value:'one',text:'Overview only (short)'}));
+    var cb2=el('input',{type:'checkbox',onchange:function(){o.notes=cb2.checked;draw();}});
+    row.append(el('label',null,'Contents ',sel2),el('label',null,cb2,'Include my private notes'));
+    help='Tap “Save as PDF”. On the print screen, set the destination to “Save as PDF”, tap the PDF button, then attach the saved file in WhatsApp or email. iPhones open PDFs directly.';
+  }
   wrap.append(
-    el('div',{class:'rptbar'},el('button',{text:'‹ Back',onclick:close}),el('div',{class:'rtt',text:'Progress report'}),el('button',{class:'go',text:'Save as PDF',onclick:go})),
-    el('div',{class:'rptopt'},
-      el('div',{class:'row'},el('label',null,'Contents ',sel),el('label',null,cb,'Include my private notes')),
-      el('p',{text:'Tap “Save as PDF”. On the print screen, set the destination to “Save as PDF”, tap the PDF button, then attach the saved file in WhatsApp or email. iPhones open PDFs directly.'})),
+    el('div',{class:'rptbar'},el('button',{text:'‹ Back',onclick:close}),el('div',{class:'rtt',text:kind==='resp'?'Response to examiners':'Progress report'}),el('button',{class:'go',text:'Save as PDF',onclick:go})),
+    el('div',{class:'rptopt'},row,el('p',{text:help})),
     page);
   draw();
   document.body.append(wrap);document.body.classList.add('rptopen','lock');wrap.scrollTop=0;
+}
+
+/* ---------- data model upgrades, progress history ---------- */
+function ensureState(s){
+  if(!s.ui)s.ui=clone(SEED.ui);
+  if(!s.ui.open)s.ui.open={};
+  if(!s.meta)s.meta={lastBackup:0};
+  if(!s.keyDates)s.keyDates=[];
+  if(!Array.isArray(s.lab))s.lab=[];
+  if(!Array.isArray(s.meetings))s.meetings=[];
+  if(!s.hist||typeof s.hist!=='object'||Array.isArray(s.hist))s.hist={};
+  return s;
+}
+function recordHist(){
+  if(RO||!state||state.empty||!state.weeks)return;
+  state=ensureState(state);
+  var tl=allTimelineTasks(),cl=allChecklistItems(),rr=allRows();
+  state.hist[today()]=[nDone(tl),tl.length,nDone(cl),cl.length,rr.filter(rowDone).length,rr.length];
+  var ks=Object.keys(state.hist).sort();
+  while(ks.length>500)delete state.hist[ks.shift()];
+}
+
+/* ---------- progress chart ---------- */
+var CH_COL={tl:'#0e8a7e',ck:'#c9962f',rs:'#4f86d9'};
+function svgEl(tag,attrs){
+  var e=document.createElementNS('http://www.w3.org/2000/svg',tag);
+  for(var k in attrs){if(attrs[k]!=null)e.setAttribute(k,attrs[k]);}
+  for(var i=2;i<arguments.length;i++){if(arguments[i])e.append(arguments[i]);}
+  return e;
+}
+function svgText(x,y,txt,attrs){var e=svgEl('text',Object.assign({x:x,y:y},attrs||{}));e.textContent=txt;return e;}
+function chartPoints(){
+  return Object.keys(state.hist||{}).sort().map(function(d){var h=state.hist[d];return {d:d,tl:pct(h[0],h[1]),ck:pct(h[2],h[3]),rs:pct(h[4],h[5])};});
+}
+function plannedPoints(){
+  var ws=state.weeks.slice().sort(function(a,b){return a.end<b.end?-1:(a.end>b.end?1:0);}),tot=allTimelineTasks().length,cum=0,pts=[];
+  if(!ws.length||!tot)return pts;
+  pts.push({d:ws.reduce(function(m,w){return w.start<m?w.start:m;},ws[0].start),p:0});
+  ws.forEach(function(w){cum+=w.tasks.length;pts.push({d:w.end,p:pct(cum,tot)});});
+  return pts;
+}
+function plannedCountBy(t){var n=0;state.weeks.forEach(function(w){if(w.end<t)n+=w.tasks.length;});return n;}
+function paceText(){
+  var t=today(),tl=allTimelineTasks(),done=nDone(tl),plan=plannedCountBy(t);
+  if(!tl.length)return '';
+  var diff=done-plan;
+  if(plan===0)return done+' of '+tl.length+' timeline tasks done. No block has reached its end date yet, so there is nothing planned to compare with.';
+  if(diff>=0)return 'On pace: '+done+' timeline tasks done, '+plan+' planned by today'+(diff>0?' ('+diff+' ahead).':'.');
+  return 'Behind by '+(-diff)+' task'+(diff===-1?'':'s')+': '+done+' timeline tasks done against '+plan+' planned by today.';
+}
+function progressChart(fixed){
+  var W=340,H=196,L=34,R=10,T=10,B=26,t=today(),pl=plannedPoints(),pts=chartPoints();
+  if(!pl.length)return null;
+  var x0=pl[0].d,x1=pl[pl.length-1].d;
+  if(pts.length&&pts[0].d<x0)x0=pts[0].d;
+  if(t>x1)x1=t;
+  var span=Math.max(1,diffDays(x0,x1));
+  function X(d){return +(L+(W-L-R)*diffDays(x0,d)/span).toFixed(1);}
+  function Y(p){return +(T+(H-T-B)*(1-p/100)).toFixed(1);}
+  var C=fixed?{grid:'#d9e2df',txt:'#5b6a67',pl:'#8a9794',today:'#b8892b'}:{grid:'var(--line)',txt:'var(--mut)',pl:'var(--mut)',today:'var(--warn)'};
+  var svg=svgEl('svg',{viewBox:'0 0 '+W+' '+H,class:'ch',role:'img','aria-label':'Progress over time compared with the plan'});
+  [0,25,50,75,100].forEach(function(p){
+    svg.append(svgEl('line',{x1:L,x2:W-R,y1:Y(p),y2:Y(p),style:'stroke:'+C.grid+';stroke-width:1'}));
+    svg.append(svgText(L-5,Y(p)+3.5,p+'%',{'text-anchor':'end',style:'fill:'+C.txt+';font-size:10px'}));
+  });
+  var m=parse(x0);m=new Date(m.getFullYear(),m.getMonth()+1,1);
+  var lastLab=-99;
+  while(iso(m)<=x1){
+    var xd=X(iso(m));
+    svg.append(svgEl('line',{x1:xd,x2:xd,y1:T,y2:H-B,style:'stroke:'+C.grid+';stroke-width:.6;stroke-dasharray:2 3'}));
+    if(xd-lastLab>26){svg.append(svgText(xd,H-B+14,MON[m.getMonth()],{'text-anchor':'middle',style:'fill:'+C.txt+';font-size:10px'}));lastLab=xd;}
+    m=new Date(m.getFullYear(),m.getMonth()+1,1);
+  }
+  svg.append(svgEl('polyline',{points:pl.map(function(p){return X(p.d)+','+Y(p.p);}).join(' '),fill:'none',style:'stroke:'+C.pl+';stroke-width:1.6;stroke-dasharray:5 4'}));
+  var xt=X(t);
+  svg.append(svgEl('line',{x1:xt,x2:xt,y1:T,y2:H-B,style:'stroke:'+C.today+';stroke-width:1.2'}));
+  svg.append(svgText(xt,T+8,'Today',{'text-anchor':xt>W-50?'end':'start',dx:xt>W-50?-3:3,style:'fill:'+C.today+';font-size:10px;font-weight:700'}));
+  [['rs',CH_COL.rs],['ck',CH_COL.ck],['tl',CH_COL.tl]].forEach(function(s){
+    if(pts.length>1)svg.append(svgEl('polyline',{points:pts.map(function(p){return X(p.d)+','+Y(p[s[0]]);}).join(' '),fill:'none',style:'stroke:'+s[1]+';stroke-width:2.4;stroke-linejoin:round;stroke-linecap:round'}));
+    var last=pts[pts.length-1];
+    if(last)svg.append(svgEl('circle',{cx:X(last.d),cy:Y(last[s[0]]),r:3.6,style:'fill:'+s[1]}));
+  });
+  return svg;
+}
+function legendEl(){
+  var lg=el('div',{class:'lg'});
+  [['Timeline',CH_COL.tl,false],['Checklist',CH_COL.ck,false],['Responses',CH_COL.rs,false],['Plan (timeline)','#8a9794',true]].forEach(function(s){
+    lg.append(el('span',null,el('i',{style:'background:'+(s[2]?'repeating-linear-gradient(90deg,'+s[1]+' 0 5px,transparent 5px 8px)':s[1])}),s[0]));
+  });
+  return lg;
+}
+
+/* ---------- calendar export (.ics) ---------- */
+function icsEsc(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n');}
+function icsD(s){return s.replace(/-/g,'');}
+function icsFold(line){
+  var enc=window.TextEncoder?new TextEncoder():null,out=[],cur='',bytes=0,lim=75;
+  Array.from(line).forEach(function(ch){
+    var b=enc?enc.encode(ch).length:ch.length;
+    if(bytes+b>lim){out.push(cur);cur=' ';bytes=1;lim=75;}
+    cur+=ch;bytes+=b;
+  });
+  out.push(cur);return out.join('\r\n');
+}
+function buildICS(o){
+  var t=today(),L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Thesis Correction Tracker//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:PhD thesis corrections'];
+  var now=new Date(),stamp=now.getUTCFullYear()+pad(now.getUTCMonth()+1)+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+pad(now.getUTCMinutes())+pad(now.getUTCSeconds())+'Z';
+  var n=0;
+  function alarm(trig,txt){L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(txt),'TRIGGER:'+trig,'END:VALARM');}
+  function ev(uid,start,end,summary,desc,alarms){
+    L.push('BEGIN:VEVENT','UID:'+uid+'@thesis-tracker','DTSTAMP:'+stamp,'DTSTART;VALUE=DATE:'+icsD(start),'DTEND;VALUE=DATE:'+icsD(addDays(end||start,1)),'SUMMARY:'+icsEsc(summary));
+    if(desc)L.push('DESCRIPTION:'+icsEsc(desc));
+    L.push('TRANSP:TRANSPARENT');
+    (alarms||[]).forEach(function(a){alarm(a[0],a[1]);});
+    L.push('END:VEVENT');n++;
+  }
+  if(o.keys)state.keyDates.forEach(function(k){
+    if(!k.count||(k.end||k.date)<t)return;
+    var al=[];
+    if(o.remind!=='none')al.push(['-PT15H','Tomorrow: '+k.label]);
+    if(o.remind==='extra')al.push(['-P6DT15H','In one week: '+k.label]);
+    ev('key-'+k.id,k.date,k.end,'Thesis: '+k.label,k.label+(k.end?' ('+range(k.date,k.end)+')':''),al);
+  });
+  if(o.blocks)state.weeks.forEach(function(w){
+    var i=weekInfo(w,t);
+    if(w.end<t||(o.unfinished&&i.complete))return;
+    var open=w.tasks.filter(function(x){return !x.done;}),d=open.slice(0,8).map(function(x){return '- '+cut(x.t,100);}).join('\n');
+    if(open.length>8)d+='\n… and '+(open.length-8)+' more';
+    var al=[];
+    if(o.remind!=='none')al.push(['PT8H','Starts today: '+w.title]);
+    if(o.remind==='extra')al.push(['PT'+(24*Math.max(0,diffDays(w.start,w.end))+8)+'H','Block ends today: '+w.title]);
+    ev('block-'+w.id,w.start<t?t:w.start,w.end,'Thesis: '+w.title,(d?'Still to do:\n'+d:'All tasks done'),al);
+  });
+  L.push('END:VCALENDAR');
+  return {text:L.map(icsFold).join('\r\n')+'\r\n',count:n};
+}
+function openCalendarExport(){
+  openSheet('Calendar reminders',function(box,close){
+    box.append(el('p',{class:'small muted',style:'margin-bottom:8px',text:'Makes a calendar file. Open it and choose Calendar (Google Calendar on Android). Your key dates and timeline blocks then appear there with reminders, even when this app is closed. Past dates and finished blocks are left out.'}));
+    var k=el('input',{type:'checkbox',checked:true}),b=el('input',{type:'checkbox',checked:true}),u=el('input',{type:'checkbox',checked:true});
+    box.append(el('label',{class:'chk'},k,'Key dates with a countdown (send to examiners, deadlines)'),el('label',{class:'chk'},b,'Timeline blocks (start to end)'),el('label',{class:'chk'},u,'Skip blocks I have already finished'));
+    var rm=field(box,'Reminders','select','basic',{options:[['none','None'],['basic','Basic: the day before a date, the morning a block starts'],['extra','Extra: also one week before, and the morning a block ends']]});
+    var msg=el('p',{class:'small muted',style:'margin:6px 0'});box.append(msg);
+    function opts(){return {keys:k.checked,blocks:b.checked,unfinished:u.checked,remind:rm.value};}
+    function file(){var r=buildICS(opts());if(!r.count){msg.textContent='Nothing to export with these choices.';return null;}return r;}
+    function dl(){
+      var r=file();if(!r)return;
+      var blob=new Blob([r.text],{type:'text/calendar;charset=utf-8'});
+      var a=el('a',{href:URL.createObjectURL(blob),download:'PhD-thesis-corrections-calendar.ics'});
+      document.body.append(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1500);
+      SFX.ok();msg.textContent=r.count+' events saved to your Downloads folder. Open the file to add them to your calendar.';
+    }
+    var acts=el('div',{class:'acts'},el('button',{class:'btn pri',text:'Save calendar file',onclick:dl}));
+    var probe;try{probe=new File(['x'],'a.ics',{type:'text/calendar'});}catch(e){probe=null;}
+    if(probe&&navigator.canShare&&navigator.canShare({files:[probe]}))acts.append(el('button',{class:'btn',text:'Share…',onclick:function(){
+      var r=file();if(!r)return;
+      navigator.share({files:[new File([r.text],'PhD-thesis-corrections-calendar.ics',{type:'text/calendar'})],title:'Thesis calendar'}).catch(function(){});}}));
+    acts.append(el('button',{class:'btn',text:'Close',onclick:close}));
+    box.append(acts);
+  });
+}
+
+/* ---------- experiment log ---------- */
+var LAB_TESTS=['Bare SPCE','Layer-by-layer (ABS)','Fe²⁺ interference','SWV calibration','DPV calibration','LOD blanks','Real sample'];
+function labTests(){var s=LAB_TESTS.slice();state.lab.forEach(function(e){if(e.test&&s.indexOf(e.test)<0)s.push(e.test);});return s;}
+function editLab(e){
+  var isNew=!e;
+  e=e||{id:uid(),date:today(),test:'',batch:'',result:'',file:'',note:''};
+  openSheet(isNew?'Add experiment':'Edit experiment',function(box,close){
+    var d=field(box,'Date','date',e.date);
+    var t=field(box,'Experiment / test','text',e.test,{ph:'e.g. Fe²⁺ interference'});
+    var dl=el('datalist',{id:'lab-tests'});labTests().forEach(function(x){dl.append(el('option',{value:x}));});
+    t.setAttribute('list','lab-tests');box.append(dl);
+    var b=field(box,'Electrode / batch','text',e.batch,{ph:'e.g. SPCE batch 3, BIM-1'});
+    var r=field(box,'Result (short)','textarea',e.result,{ph:'e.g. Ip = 4.2 µA at 0.35 V'});
+    var f=field(box,'Data file name','text',e.file,{ph:'e.g. 2026-12-03_BIM1_SWV.csv'});
+    var n=field(box,'Private note (optional)','textarea',e.note);
+    var err=el('div',{class:'err'});box.append(err);
+    box.append(el('div',{class:'acts'},el('button',{class:'btn pri',text:isNew?'Add':'Save',onclick:function(){
+      if(!d.value||!t.value.trim()){err.textContent='Add a date and the experiment name.';return;}
+      e.date=d.value;e.test=t.value.trim();e.batch=b.value.trim();e.result=r.value.trim();e.file=f.value.trim();e.note=n.value.trim();
+      if(isNew)state.lab.push(e);
+      close();save(true);render();}})));
+    if(!isNew)box.append(el('div',{class:'acts'},el('button',{class:'btn sm bad',text:'Delete entry',onclick:function(){close();withUndo('Entry deleted',function(){state.lab.splice(state.lab.indexOf(e),1);});}})));
+  });
+}
+function labSorted(){return state.lab.map(function(e,i){return [e,i];}).sort(function(a,b){return a[0].date<b[0].date?1:(a[0].date>b[0].date?-1:b[1]-a[1]);}).map(function(p){return p[0];});}
+function copyLab(){
+  var L=['Date\tExperiment\tElectrode / batch\tResult\tData file'];
+  labSorted().slice().reverse().forEach(function(e){L.push([e.date,e.test,e.batch,e.result,e.file].map(function(s){return String(s||'').replace(/[\t\r\n]+/g,' ');}).join('\t'));});
+  textSheet('Copy: experiment log',L.join('\n'),'Tab-separated. Paste into Excel or Sheets and it lands in columns. Private notes are not included.');
+}
+function labSection(root){
+  var n=state.lab.length;
+  if(RO&&!n)return;
+  var open=isOpen('lab',n>0);
+  root.append(el('div',{class:'grp',text:'Experiment log · '+n}));
+  var c=el('div',{class:'card'});
+  c.append(el('button',{class:'wh',style:'padding:0;min-height:44px','aria-expanded':open?'true':'false',onclick:function(){state.ui.open.lab=!open;save();render();}},
+    el('div',{class:'t'},el('b',{text:n?n+' entr'+(n===1?'y':'ies'):'No entries yet'}),el('span',{text:'Date, test, batch, result and data file name'})),icon('chev','chev')));
+  if(open){
+    var body=el('div',{style:'margin-top:8px'});
+    labSorted().forEach(function(e){
+      var card=el('div',{class:'ent'});
+      card.append(el('div',{class:'top'},el('b',null,fmtY(e.date)+' · '+e.test),RO?null:el('button',{class:'ed2','aria-label':'Edit entry',onclick:function(){editLab(e);}},icon('pen'))));
+      var meta=[];if(e.batch)meta.push(e.batch);
+      if(meta.length)card.append(el('div',{class:'meta',text:meta.join(' · ')}));
+      if(e.result)card.append(el('div',{class:'res',text:e.result}));
+      if(e.file)card.append(el('div',{class:'meta'},'File: ',el('span',{class:'fn',text:e.file})));
+      if(e.note)card.append(el('div',{class:'nt',text:e.note}));
+      body.append(card);
+    });
+    if(!RO)body.append(el('div',{class:'tools'},
+      el('button',{class:'btn sm',text:'+ Add entry',onclick:function(){editLab();}}),
+      n?el('button',{class:'btn sm',text:'Copy as table',onclick:copyLab}):null));
+    c.append(body);
+  }
+  root.append(c);
+}
+
+/* ---------- supervisor meetings ---------- */
+function editMeeting(m){
+  var isNew=!m;
+  m=m||{id:uid(),date:today(),who:'',notes:'',actions:[]};
+  openSheet(isNew?'Add meeting':'Edit meeting',function(box,close){
+    var d=field(box,'Date','date',m.date);
+    var w=field(box,'With','text',m.who,{ph:'e.g. both supervisors'});
+    var nt=field(box,'What was agreed','textarea',m.notes,{ph:'Decisions and advice'});
+    var ac=field(box,'Action points (one per line)','textarea',m.actions.map(function(a){return a.t;}).join('\n'),{ph:'e.g. Send chapter 4 draft by Friday'});
+    var err=el('div',{class:'err'});box.append(err);
+    box.append(el('div',{class:'acts'},el('button',{class:'btn pri',text:isNew?'Add':'Save',onclick:function(){
+      if(!d.value){err.textContent='Add the meeting date.';return;}
+      var old=m.actions.slice();
+      m.date=d.value;m.who=w.value.trim();m.notes=nt.value.trim();
+      m.actions=ac.value.split(/\n+/).map(function(s){return s.trim();}).filter(Boolean).map(function(line){
+        var i=old.map(function(a){return a.t;}).indexOf(line);
+        if(i>=0)return old.splice(i,1)[0];
+        return {id:uid(),t:line,done:false,linked:false};
+      });
+      if(isNew)state.meetings.push(m);
+      close();save(true);render();}})));
+    if(!isNew)box.append(el('div',{class:'acts'},el('button',{class:'btn sm bad',text:'Delete meeting',onclick:function(){close();withUndo('Meeting deleted',function(){state.meetings.splice(state.meetings.indexOf(m),1);});}})));
+  });
+}
+function actionToTimeline(m,a){
+  openSheet('Add to the timeline',function(box,close){
+    box.append(el('p',{class:'small muted',style:'margin-bottom:8px',text:'“'+a.t+'”'}));
+    var f=focusWeek(today());
+    var sel=field(box,'Put it in this block','select',f?f.id:state.weeks[0].id,{options:state.weeks.map(function(w){return [w.id,w.title+' ('+range(w.start,w.end)+')'];})});
+    box.append(el('div',{class:'acts'},el('button',{class:'btn pri',text:'Add task',onclick:function(){
+      var w=state.weeks.filter(function(x){return x.id===sel.value;})[0];if(!w)return;
+      w.tasks.push({id:uid(),t:a.t,done:!!a.done,st:'',note:'From supervisor meeting on '+fmtY(m.date)});
+      a.linked=true;state.ui.open[w.id]=true;
+      close();save(true);render();toast('Added to “'+w.title+'”.');}}),
+      el('button',{class:'btn',text:'Cancel',onclick:close})));
+  });
+}
+function meetSection(root){
+  var n=state.meetings.length;
+  if(RO&&!n)return;
+  var open=isOpen('meet',n>0);
+  root.append(el('div',{class:'grp',text:'Supervisor meetings · '+n}));
+  var c=el('div',{class:'card'});
+  c.append(el('button',{class:'wh',style:'padding:0;min-height:44px','aria-expanded':open?'true':'false',onclick:function(){state.ui.open.meet=!open;save();render();}},
+    el('div',{class:'t'},el('b',{text:n?n+' meeting'+(n===1?'':'s'):'No meetings yet'}),el('span',{text:'What was agreed, with action points'})),icon('chev','chev')));
+  if(open){
+    var body=el('div',{style:'margin-top:8px'});
+    state.meetings.slice().sort(function(a,b){return a.date<b.date?1:(a.date>b.date?-1:0);}).forEach(function(m){
+      var card=el('div',{class:'ent'});
+      card.append(el('div',{class:'top'},el('b',null,fmtY(m.date)+(m.who?' · '+m.who:'')),RO?null:el('button',{class:'ed2','aria-label':'Edit meeting',onclick:function(){editMeeting(m);}},icon('pen'))));
+      if(m.notes)card.append(el('div',{class:'res',text:m.notes}));
+      m.actions.forEach(function(a){
+        card.append(el('div',{class:'task'+(a.done?' done':''),style:'padding-left:0'},
+          RO?el('div',{class:'cb static'},el('i',null,icon('check'))):el('button',{class:'cb','aria-label':a.done?'Mark not done':'Mark done',onclick:function(){a.done=!a.done;SFX[a.done?'tick':'untick']();save(true);render();}},el('i',null,icon('check'))),
+          el('div',{class:'tt ro'},el('div',{class:'tx'},a.t,a.linked?el('span',{class:'tag done',text:'On timeline'}):null)),
+          (!RO&&!a.linked)?el('button',{class:'btn sm',text:'+ Timeline',onclick:function(){actionToTimeline(m,a);}}):null));
+      });
+      body.append(card);
+    });
+    if(!RO)body.append(el('div',{class:'tools'},el('button',{class:'btn sm',text:'+ Add meeting',onclick:function(){editMeeting();}})));
+    c.append(body);
+  }
+  root.append(c);
+}
+
+/* ---------- More tab ---------- */
+function moreView(){
+  var root=el('div');
+  var c=el('div',{class:'card hero'});
+  c.append(el('h2',{text:'Progress over time',style:'margin-bottom:6px'}));
+  var ch=progressChart(false);
+  if(ch){
+    c.append(ch,legendEl(),el('p',{class:'small',style:'margin-top:8px',text:paceText()}));
+    if(Object.keys(state.hist).length<2)c.append(el('p',{class:'small muted',style:'margin-top:4px',text:'The lines start from the day this feature was added and grow each day you tick things off.'}));
+  }else c.append(el('p',{class:'small muted',text:'Add timeline blocks with dates and tasks to see the chart.'}));
+  root.append(c);
+  if(!RO){
+    root.append(el('div',{class:'grp',text:'Share and export'}));
+    var d=el('div',{class:'card'});
+    [['PDF progress report','Overview and full detail for your supervisors',function(){openReport('full');},true],
+     ['Examiner response PDF','Landscape table of comments, corrections made and locations',function(){openReport('resp');},false],
+     ['Text summary','Short message for WhatsApp or email',function(){textSheet('Progress summary',summaryText(),'Share it to WhatsApp or email, or copy and paste it.','PhD thesis correction progress');},false],
+     ['Calendar reminders','Key dates and timeline blocks in your phone calendar',openCalendarExport,false]].forEach(function(b,i){
+      d.append(el('div',{style:i?'margin-top:10px':''},el('button',{class:'btn full'+(b[3]?' pri':''),text:b[0],onclick:b[2]}),el('div',{class:'small muted',style:'margin:3px 2px 0',text:b[1]})));
+    });
+    root.append(d);
+  }
+  labSection(root);
+  meetSection(root);
+  return root;
+}
+
+/* ---------- search across everything ---------- */
+function openSearch(){
+  openSheet('Search',function(box,close){
+    var inp=el('input',{class:'search',type:'search',placeholder:'Tasks, checklist, comments, lab log, meetings…'});
+    var out=el('div',{style:'margin-top:6px'});
+    box.append(inp,out);
+    function jump(fn){return function(){close();fn();};}
+    function run(){
+      var raw=inp.value.trim(),q=raw.toLowerCase();out.textContent='';
+      if(q.length<2){out.append(el('p',{class:'small muted',text:'Type at least 2 letters to search all four tabs.'}));return;}
+      var G=[];
+      function has(){return Array.prototype.slice.call(arguments).join(' ').toLowerCase().indexOf(q)>=0;}
+      var tl=[];state.weeks.forEach(function(w){w.tasks.forEach(function(x){if(has(x.t,x.note))tl.push({tx:x.t,wh:w.title,fn:function(){state.ui.tab='timeline';state.ui.open[w.id]=true;save();render();setTimeout(function(){var n=document.getElementById('w-'+w.id);if(n)n.scrollIntoView({block:'start'});},60);}});});});
+      G.push(['Timeline',tl]);
+      var ck=[];state.checklist.forEach(function(p){[p].concat(p.subs).forEach(function(s){sectionLists(s).forEach(function(b){b.items.forEach(function(x){if(has(x.t,x.note))ck.push({tx:x.t,wh:p.title,fn:function(){state.ui.tab='checklist';state.ui.q=raw;state.ui.clPart='ALL';state.ui.hideDone=false;save();render();window.scrollTo(0,0);}});});});});});
+      G.push(['Checklist',ck]);
+      var rs=[];state.response.forEach(function(g){g.rows.forEach(function(r){if(has(r.no,r.comment,r.action,r.made,r.loc,r.note))rs.push({tx:r.no+': '+r.comment,wh:g.name,fn:function(){state.ui.tab='response';state.ui.rq=raw;state.ui.rsGroup='ALL';state.ui.rsStatus='ALL';save();render();window.scrollTo(0,0);}});});});
+      G.push(['Responses',rs]);
+      var lb=[];state.lab.forEach(function(e){if(has(e.test,e.batch,e.result,e.file,e.note,e.date))lb.push({tx:e.test+(e.result?': '+e.result:''),wh:'Experiment log · '+fmtY(e.date),fn:function(){state.ui.tab='more';state.ui.open.lab=true;save();render();window.scrollTo(0,0);}});});
+      G.push(['Experiment log',lb]);
+      var mt=[];state.meetings.forEach(function(m){if(has(m.who,m.notes,m.date,m.actions.map(function(a){return a.t;}).join(' ')))mt.push({tx:(m.notes||m.actions.map(function(a){return a.t;}).join('; ')||'Meeting'),wh:'Meeting · '+fmtY(m.date),fn:function(){state.ui.tab='more';state.ui.open.meet=true;save();render();window.scrollTo(0,0);}});});
+      G.push(['Meetings',mt]);
+      var total=0;
+      G.forEach(function(g){
+        if(!g[1].length)return;total+=g[1].length;
+        out.append(el('div',{class:'srh',text:g[0]+' · '+g[1].length}));
+        g[1].slice(0,6).forEach(function(r){out.append(el('button',{class:'sr',onclick:jump(r.fn)},el('div',{class:'x',text:cut(r.tx,140)}),el('div',{class:'w',text:r.wh})));});
+        if(g[1].length>6)out.append(el('p',{class:'small muted',style:'margin:2px 4px 6px',text:(g[1].length-6)+' more. Type more letters to narrow it down.'}));
+      });
+      if(!total)out.append(el('p',{class:'small muted',text:'Nothing found for “'+raw+'”.'}));
+    }
+    inp.addEventListener('input',run);run();
+    box.append(el('div',{class:'acts',style:'margin-top:8px'},el('button',{class:'btn',text:'Close',onclick:close})));
+    setTimeout(function(){inp.focus();},120);
+  });
+}
+
+/* ---------- backup reminder (every tab) ---------- */
+function backupNudge(){
+  if(RO||state.empty||!storageOK)return null;
+  var m=state.meta,t=today();
+  if(m.snoozeUntil&&m.snoozeUntil>t)return null;
+  var days=Math.floor((Date.now()-(m.lastBackup||0))/864e5);
+  var any=nDone(allTimelineTasks())+nDone(allChecklistItems())+allRows().filter(rowDone).length+state.lab.length+state.meetings.length;
+  if(!(m.lastBackup?days>=7:any>0))return null;
+  return el('div',{class:'warnbox'},
+    el('b',{text:m.lastBackup?'Last backup was '+days+' days ago. ':'No backup yet. '}),
+    'Your data lives only on this phone, and phone browsers can clear it.',
+    el('div',{class:'acts',style:'margin-top:8px'},
+      el('button',{class:'btn sm pri',text:'Back up now',onclick:function(){downloadBackup();render();}}),
+      el('button',{class:'btn sm',text:'Remind me in 2 days',onclick:function(){m.snoozeUntil=addDays(today(),2);save(true);render();}})));
 }
 
 /* ---------- view-only copy ---------- */
@@ -1193,12 +1623,13 @@ function snapshotHTML(includeNotes){
   st.ui={tab:'timeline',theme:'auto',sfx:'off',vol:'med',open:{},hideDone:false,clPart:'ALL',rsGroup:'ALL',rsStatus:'ALL',q:'',rq:''};
   st.meta={lastBackup:0,snapshotDay:today(),snapshotAt:Date.now(),owner:'Tengku Sarah'};
   if(!includeNotes){
+    st.lab=[];st.meetings=[];
     st.weeks.forEach(function(w){w.tasks.forEach(function(t){t.note='';});});
     st.checklist.forEach(function(p){[p].concat(p.subs).forEach(function(sc){sc.blocks.forEach(function(b){if(b.k==='list')b.items.forEach(function(i){i.note='';});});});});
     st.response.forEach(function(g){g.rows.forEach(function(r){r.note='';});});
   }
   var doc=document.documentElement.cloneNode(true);
-  ['main','nav','layer','snack','gear','today'].forEach(function(id){var n=doc.querySelector('#'+id);if(n)n.textContent='';});
+  ['main','nav','layer','snack','gear','srch','today','rptwrap'].forEach(function(id){var n=doc.querySelector('#'+id);if(n)n.textContent='';});
   var sd=doc.querySelector('#seed');if(sd)sd.remove();
   ['#sw','link[rel=manifest]','link[rel=apple-touch-icon]'].forEach(function(q){var n=doc.querySelector(q);if(n)n.remove();});
   var old=doc.querySelector('#snap');if(old)old.remove();
@@ -1241,7 +1672,7 @@ function welcomeView(){
 }
 
 /* ---------- shell ---------- */
-var TABS=[['timeline','Timeline','tl'],['checklist','Checklist','ck'],['response','Responses','rs']];
+var TABS=[['timeline','Timeline','tl'],['checklist','Checklist','ck'],['response','Responses','rs'],['more','More','more']];
 function renderNav(){
   var nav=document.getElementById('nav');nav.textContent='';
   TABS.forEach(function(t){
@@ -1249,13 +1680,15 @@ function renderNav(){
   });
 }
 function render(){
+  state=ensureState(state);
   var y=window.scrollY,tab=state.ui.tab;
   var main=document.getElementById('main');main.textContent='';
   var d=new Date();
   shownDay=today();
   document.getElementById('today').textContent=(RO?'Progress as of ':'')+DOW[parse(shownDay).getDay()]+' '+fmtY(shownDay);
-  var v=state.empty?welcomeView():(tab==='checklist'?checklistView():(tab==='response'?responseView():timelineView()));
+  var v=state.empty?welcomeView():(tab==='checklist'?checklistView():(tab==='response'?responseView():(tab==='more'?moreView():timelineView())));
   if(RO)main.append(roBanner());
+  var nz=state.empty?null:backupNudge();if(nz)main.append(nz);
   main.append(v);
   main.append(el('div',{class:'credit',text:'@nadasara256'}));
   if(state.empty)document.getElementById('nav').textContent='';else renderNav();
@@ -1264,10 +1697,10 @@ function render(){
 }
 function init(){
   state=loadState();
-  if(!state.ui)state.ui=clone(SEED.ui);
-  if(!state.meta)state.meta={lastBackup:0};
-  if(!state.keyDates)state.keyDates=[];
   applyTheme();
+  state=ensureState(state);
+  if(!RO&&!state.empty&&!state.hist[today()]){recordHist();save();}
+  var sb=document.getElementById('srch');sb.append(icon('search'));sb.addEventListener('click',openSearch);
   var g=document.getElementById('gear');
   if(RO){g.style.display='none';document.getElementById('save').innerHTML='<span class="rotag">View only</span>';document.title='Progress copy: '+document.title;}
   else{g.append(icon('gear'));g.addEventListener('click',openSettings);}
