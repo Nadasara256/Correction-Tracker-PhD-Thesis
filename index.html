@@ -277,6 +277,8 @@ nav{background:var(--card-a);-webkit-backdrop-filter:blur(8px);backdrop-filter:b
   body.rptopen .rpt table.rs{min-width:0}
   body.rptopen .rpt .rtw{overflow:visible}
 }
+.credit{text-align:center;font-weight:700;font-style:italic;font-size:15px;letter-spacing:.01em;color:var(--mut);opacity:.85;margin:20px 0 10px;user-select:none;-webkit-user-select:none}
+@media print{.credit{display:none}}
 </style>
 </head>
 <body>
@@ -1255,6 +1257,7 @@ function render(){
   var v=state.empty?welcomeView():(tab==='checklist'?checklistView():(tab==='response'?responseView():timelineView()));
   if(RO)main.append(roBanner());
   main.append(v);
+  main.append(el('div',{class:'credit',text:'@nadasara256'}));
   if(state.empty)document.getElementById('nav').textContent='';else renderNav();
   setStatus();
   window.scrollTo(0,y);
