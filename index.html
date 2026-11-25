@@ -318,6 +318,14 @@ nav{background:var(--card-a);-webkit-backdrop-filter:blur(8px);backdrop-filter:b
 .dropline{position:fixed;z-index:89;height:3px;border-radius:3px;background:var(--acc);pointer-events:none;box-shadow:0 0 0 2px rgba(14,138,126,.25)}
 .card.week.droptarget{outline:3px solid var(--acc);outline-offset:-1px}
 body.dragmode{-webkit-user-select:none;user-select:none}
+/* ---- drag whole blocks ---- */
+.whrow{display:flex;align-items:stretch}
+.whrow .wh{flex:1;width:auto;min-width:0;padding-left:4px}
+.dhb{flex:none;width:44px;display:grid;place-items:center;color:var(--acc);border:0;background:none;touch-action:none;cursor:grab}
+.dhb svg{width:22px;height:22px}
+.card.week.dragging{opacity:.35}
+.dragghost.blk{padding:0;border-radius:14px}
+.blockdrag .card.week .wb{display:none}
 </style>
 </head>
 <body>
@@ -666,6 +674,90 @@ function moveTask(fw,fi,tw,ti){
     state.ui.open[to.id]=true;
   });
 }
+
+function moveBlock(fi,ti,grp){
+  var w=state.weeks[fi];if(!w)return;
+  var oldGrp=w.group;
+  if((ti===fi||ti===fi+1)&&grp===oldGrp)return;
+  var snap=JSON.stringify(state);
+  state.weeks.splice(fi,1);if(ti>fi)ti--;
+  state.weeks.splice(ti,0,w);w.group=grp;
+  var prev=state.weeks[ti-1],next=state.weeks[ti+1];
+  var fits=(!prev||w.start>prev.end)&&(!next||w.end<next.start);
+  function undo(){state=JSON.parse(snap);save(true);render();}
+  save(true);render();SFX.ok();
+  if(fits&&grp===oldGrp){toast('Block moved','Undo',undo);return;}
+  var dur=diffDays(w.start,w.end),ns,ne,anchor,shiftBy=0;
+  if(prev){ns=addDays(prev.end,1);ne=addDays(ns,dur);anchor='after “'+prev.title+'”';if(next&&next.start<=ne)shiftBy=diffDays(next.start,addDays(ne,1));}
+  else if(next){ne=addDays(next.start,-1);ns=addDays(ne,-dur);anchor='before “'+next.title+'”';}
+  openSheet('Block moved',function(box,close){
+    box.append(el('p',{style:'margin-bottom:6px'},el('b',{text:w.title}),' is now under “'+(w.group||'Other')+'”.'));
+    box.append(el('p',{class:'small muted',style:'margin-bottom:10px',text:'Its dates are still '+range(w.start,w.end)+(fits?'.':', which no longer fit the order. Do you want to update them?')}));
+    var acts=el('div',{class:'acts',style:'flex-direction:column;align-items:stretch'});
+    if(ns){
+      acts.append(el('button',{class:'btn pri',text:'Fit dates '+anchor+': '+range(ns,ne)+(shiftBy>0?' (later blocks move '+shiftBy+' day'+(shiftBy===1?'':'s')+')':''),onclick:function(){
+        close();withUndo('Dates updated',function(){
+          w.start=ns;w.end=ne;
+          if(shiftBy>0)for(var i=state.weeks.indexOf(w)+1;i<state.weeks.length;i++){var b=state.weeks[i];b.start=addDays(b.start,shiftBy);b.end=addDays(b.end,shiftBy);}
+        });}}));
+    }
+    acts.append(el('button',{class:'btn',text:'Choose the dates myself',onclick:function(){close();editWeek(state.weeks.indexOf(w));}}));
+    acts.append(el('button',{class:'btn',text:'Keep the dates as they are',onclick:close}));
+    acts.append(el('button',{class:'btn sm bad',text:'Undo this move',onclick:function(){close();undo();}}));
+    box.append(acts);
+  });
+}
+function blockDragStart(ev,fi,row){
+  if(ev.button!==undefined&&ev.button>0)return;
+  ev.preventDefault();
+  var h=ev.currentTarget;try{h.setPointerCapture(ev.pointerId);}catch(e){}
+  var card=row.closest('.card.week'),rect=row.getBoundingClientRect(),offY=ev.clientY-rect.top;
+  var ghost=row.cloneNode(true);ghost.classList.add('dragghost','blk');
+  ghost.style.width=rect.width+'px';ghost.style.left=rect.left+'px';ghost.style.top=rect.top+'px';
+  document.body.append(ghost);
+  var line=el('div',{class:'dropline',style:'display:none'});document.body.append(line);
+  card.classList.add('dragging');document.body.classList.add('dragmode');
+  var y0=row.getBoundingClientRect().top;document.body.classList.add('blockdrag');
+  window.scrollBy(0,row.getBoundingClientRect().top-y0);
+  var last={x:ev.clientX,y:ev.clientY},tgt=null,raf=0,done=false;
+  if(navigator.vibrate){try{navigator.vibrate(12);}catch(e){}}
+  SFX.tap();
+  function target(){
+    ghost.style.top=(last.y-offY)+'px';
+    var n=document.elementFromPoint(last.x,last.y);tgt=null;line.style.display='none';
+    if(!n||!n.closest)return;
+    var c=n.closest('.card.week'),lab=n.closest('.grp');
+    if(c){
+      var wi2=+c.getAttribute('data-wi');if(wi2===fi)return;
+      var r=c.getBoundingClientRect(),after=last.y>r.top+r.height/2;
+      tgt={i:wi2+(after?1:0),g:state.weeks[wi2].group};
+      line.style.cssText='display:block;left:'+r.left+'px;width:'+r.width+'px;top:'+((after?r.bottom+3:r.top-5))+'px';
+    }else if(lab&&lab.getAttribute('data-wi')!==null){
+      var wl=+lab.getAttribute('data-wi'),lr=lab.getBoundingClientRect();
+      tgt={i:wl,g:state.weeks[wl].group};
+      line.style.cssText='display:block;left:'+lr.left+'px;width:'+lr.width+'px;top:'+(lr.bottom+1)+'px';
+    }
+  }
+  function tick(){
+    if(done)return;
+    var vh=window.innerHeight,sp=0;
+    if(last.y<115)sp=-Math.ceil((115-last.y)/5);else if(last.y>vh-150)sp=Math.ceil((last.y-(vh-150))/5);
+    if(sp)window.scrollBy(0,Math.max(-24,Math.min(24,sp)));
+    target();raf=requestAnimationFrame(tick);
+  }
+  function finish(commit){
+    if(done)return;done=true;cancelAnimationFrame(raf);
+    ghost.remove();line.remove();card.classList.remove('dragging');
+    document.body.classList.remove('dragmode','blockdrag');
+    var t=tgt;
+    if(commit&&t)moveBlock(fi,t.i,t.g);
+  }
+  h.addEventListener('pointermove',function(e){last.x=e.clientX;last.y=e.clientY;});
+  h.addEventListener('pointerup',function(){finish(true);});
+  h.addEventListener('pointercancel',function(){finish(false);});
+  raf=requestAnimationFrame(tick);
+}
+
 function dragStart(ev,wi,ti,row){
   if(ev.button!==undefined&&ev.button>0)return;
   ev.preventDefault();
@@ -750,11 +842,11 @@ function timelineView(){
   tools.append(el('button',{class:'btn sm',text:'Collapse all',onclick:function(){state.weeks.forEach(function(w){state.ui.open[w.id]=false;});save();render();}}));
   if(!RO)tools.append(el('button',{class:'btn sm'+(REPLAN?' pri':''),text:REPLAN?'Done re-planning':'Re-plan (drag tasks)',onclick:function(){REPLAN=!REPLAN;render();}}));
   root.append(tools);
-  if(REPLAN&&!RO)root.append(el('div',{class:'warnbox',style:'margin-bottom:10px'},el('b',{text:'Re-plan mode. '}),'Press and hold the ⋮⋮ handle at the right of a task, then drag it onto any block, even a closed one, or between tasks. The page scrolls when you drag near the top or bottom. Tap the task text to edit it.'));
+  if(REPLAN&&!RO)root.append(el('div',{class:'warnbox',style:'margin-bottom:10px'},el('b',{text:'Re-plan mode. '}),'Tasks: press and hold the ⋮⋮ handle at the right of a task and drag it onto any block, even a closed one, or between tasks. Whole blocks: use the ⋮⋮ handle at the left of the block title; blocks fold up while you drag so you can drop one under another month heading. The page scrolls when you drag near the top or bottom.'));
 
   var lastGroup=null;
   state.weeks.forEach(function(w,wi){
-    if(w.group!==lastGroup){root.append(el('div',{class:'grp',text:w.group||'Other'}));lastGroup=w.group;}
+    if(w.group!==lastGroup){root.append(el('div',{class:'grp','data-wi':String(wi),text:w.group||'Other'}));lastGroup=w.group;}
     var info=weekInfo(w,t),isFocus=f&&f.id===w.id;
     var open=isOpen(w.id,isFocus||info.overdue);
     var tags=[];
@@ -763,9 +855,14 @@ function timelineView(){
     if(info.complete)tags.push(el('span',{class:'tag done',text:'Done'}));
     else if(info.overdue)tags.push(el('span',{class:'tag late',text:'Overdue'}));
     var c=el('div',{class:'card week'+(open?' open':'')+(info.pos==='now'?' now':''),id:'w-'+w.id,'data-wi':String(wi)});
-    c.append(el('button',{class:'wh','aria-expanded':open?'true':'false',onclick:function(){state.ui.open[w.id]=!open;save();render();}},
+    var whb=el('button',{class:'wh','aria-expanded':open?'true':'false',onclick:function(){state.ui.open[w.id]=!open;save();render();}},
       el('div',{class:'t'},el('b',null,w.title,tags),el('span',{text:range(w.start,w.end)})),
-      el('span',{class:'cnt',text:info.done+'/'+info.total}),icon('chev','chev')));
+      el('span',{class:'cnt',text:info.done+'/'+info.total}),icon('chev','chev'));
+    if(REPLAN&&!RO){
+      var hrow=el('div',{class:'whrow'});
+      hrow.append(el('button',{class:'dhb','aria-label':'Drag this whole block',onpointerdown:function(ev){blockDragStart(ev,wi,hrow);}},icon('grip')),whb);
+      c.append(hrow);
+    }else c.append(whb);
     if(open){
       var body=el('div',{class:'wb'});
       if(!w.tasks.length)body.append(el('div',{class:'empty small',text:'No tasks yet.'}));
@@ -783,9 +880,43 @@ function timelineView(){
   var ao=isOpen('about',false);
   about.append(el('button',{class:'wh'+'',style:'padding:0;min-height:44px',onclick:function(){state.ui.open.about=!ao;save();render();}},
     el('div',{class:'t'},el('b',{text:'About this plan'})),icon('chev','chev')));
-  if(ao){var ul=el('ul',{style:'margin:8px 0 0;padding-left:20px'});(state.about||[]).forEach(function(a){ul.append(el('li',{text:a,style:'margin-bottom:6px'}));});about.append(ul);about.classList.add('open');}
+  if(ao){var ul=el('ul',{style:'margin:8px 0 0;padding-left:20px'});
+    autoAbout().concat(state.about||[]).forEach(function(a){ul.append(el('li',{text:a,style:'margin-bottom:6px'}));});
+    about.append(ul);about.classList.add('open');
+    about.append(el('div',{class:'muted',style:'font-size:12px;margin-top:6px',text:'The first lines update by themselves from your blocks and key dates.'}));
+    if(!RO)about.append(el('div',{class:'acts',style:'margin-top:8px'},el('button',{class:'btn sm',text:'Edit notes',onclick:editAbout})));}
   root.append(about);
   return root;
+}
+
+function autoAbout(){
+  var out=[],ws=(state.weeks||[]).filter(function(w){return w.start&&w.end&&w.end>=w.start;});
+  if(ws.length){
+    var parts=[];
+    PHASES.forEach(function(p){
+      var g=ws.filter(function(w){return (w.phase||'prep')===p[0];});
+      if(!g.length)return;
+      var a=g.reduce(function(m,w){return w.start<m?w.start:m;},g[0].start);
+      var b=g.reduce(function(m,w){return w.end>m?w.end:m;},g[0].end);
+      parts.push(p[1]+' '+range(a,b));});
+    out.push('Your plan has '+ws.length+' blocks. By phase: '+parts.join('; ')+'.');
+  }
+  var ks=keyDatesSorted();
+  if(ks.length)out.push('Key dates: '+ks.map(function(k){return k.label+' '+range(k.date,k.end||k.date);}).join('; ')+'.');
+  var hol=(state.keyDates||[]).filter(function(k){return !k.count&&k.date;});
+  if(hol.length)out.push('Holiday periods marked: '+hol.map(function(k){return k.label+' '+range(k.date,k.end||k.date);}).join('; ')+'.');
+  return out;
+}
+function editAbout(){
+  openSheet('Edit plan notes',function(box,close){
+    box.append(el('p',{class:'muted',text:'One note per line. Avoid typing dates here: the lines above the notes already update by themselves.',style:'margin-bottom:10px'}));
+    var ta=field(box,'Notes','textarea',(state.about||[]).join('\n'));ta.rows=10;
+    box.append(el('div',{class:'acts'},
+      el('button',{class:'btn',text:'Cancel',onclick:close}),
+      el('button',{class:'btn pri',text:'Save',onclick:function(){
+        var lines=ta.value.split('\n').map(function(x){return x.trim();}).filter(Boolean);
+        close();withUndo('Notes saved',function(){state.about=lines;});}})));
+  });
 }
 function glance(t){
   var ws=state.weeks.filter(function(w){return w.start&&w.end&&w.end>=w.start;});
@@ -1325,11 +1456,24 @@ function openReport(kind){
 }
 
 /* ---------- data model upgrades, progress history ---------- */
+var ABOUT_OLD={
+ 'Lab work runs 1':null,
+ 'Two lab sensors: each December lab week covers both sensors, BIM-1/MCM-48/SPCE and BIM-2/MWCNT-COOH/SPCE.':'Two lab sensors: each lab block covers both sensors, BIM-1/MCM-48/SPCE and BIM-2/MWCNT-COOH/SPCE.',
+ 'Buffer week: 28 Dec – 3 Jan is kept free for repeats.':'Buffer block: a block at the end of the lab period is kept free for repeats.',
+ 'Holidays: Ramadan is expected from 8 Feb to 9 Mar 2027, with Hari Raya Aidilfitri on 10–11 Mar. The lighter tasks sit there, and that period doubles as supervisor review time.':'Holidays: the lighter tasks sit around Ramadan and Hari Raya, and that period doubles as supervisor review time.',
+ 'Supervisor review: the full draft goes to your supervisors on Fri 26 Feb, giving them two weeks before you revise.':'Supervisor review: the full draft goes to your supervisors first, giving them about two weeks before you revise.'
+};
+function migAbout(a){
+  if(typeof a!=='string')return a;
+  if(a.indexOf('Lab work runs 1')===0&&a.indexOf('31 March 2027')>-1)return null;
+  return Object.prototype.hasOwnProperty.call(ABOUT_OLD,a)&&ABOUT_OLD[a]?ABOUT_OLD[a]:a;
+}
 function ensureState(s){
   if(!s.ui)s.ui=clone(SEED.ui);
   if(!s.ui.open)s.ui.open={};
   if(!s.meta)s.meta={lastBackup:0};
   if(!s.keyDates)s.keyDates=[];
+  if(Array.isArray(s.about))s.about=s.about.map(migAbout).filter(function(x){return x!==null;});
   if(!Array.isArray(s.lab))s.lab=[];
   if(!Array.isArray(s.meetings))s.meetings=[];
   if(!s.hist||typeof s.hist!=='object'||Array.isArray(s.hist))s.hist={};
