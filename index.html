@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Correction Tracker">
+<meta name="apple-mobile-web-app-title" content="Thesis Correction">
 <title>PhD Thesis Correction Tengku Sarah</title>
 <style>
 :root{
@@ -1395,7 +1395,7 @@ function reportEl(o){
       }),'rs'));
     });
   }
-  R.append(el('div',{class:'foot',text:'Generated from the Correction Tracker app on '+fmtY(t)+'. '+(o.notes?'Includes private notes.':'Private notes are not included.')}));
+  R.append(el('div',{class:'foot',text:'Generated from the Thesis Correction app on '+fmtY(t)+'. '+(o.notes?'Includes private notes.':'Private notes are not included.')}));
   return R;
 }
 
@@ -1416,7 +1416,7 @@ function respReportEl(o){
     else R.append(rtable(['No.','Comment','Action required','Correction made','Location','Status'],rows.map(function(r){return [r.no,r.comment,r.action||'',r.made||'',r.loc||'',rtag(RSTAG[r.st]||RSTAG.todo)];}),'rs'));
   });
   if(!shown)R.append(el('p',{class:'none',text:'Every comment is answered, so there is nothing to list with this filter.'}));
-  R.append(el('div',{class:'foot',text:'Generated from the Correction Tracker app on '+fmtY(t)+'.'}));
+  R.append(el('div',{class:'foot',text:'Generated from the Thesis Correction app on '+fmtY(t)+'.'}));
   return R;
 }
 
@@ -1574,7 +1574,7 @@ function icsFold(line){
   out.push(cur);return out.join('\r\n');
 }
 function buildICS(o){
-  var t=today(),L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Thesis Correction Tracker//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:PhD thesis corrections'];
+  var t=today(),L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Thesis Correction//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:PhD thesis corrections'];
   var now=new Date(),stamp=now.getUTCFullYear()+pad(now.getUTCMonth()+1)+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+pad(now.getUTCMinutes())+pad(now.getUTCSeconds())+'Z';
   var n=0;
   function alarm(trig,txt){L.push('BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsEsc(txt),'TRIGGER:'+trig,'END:VALARM');}

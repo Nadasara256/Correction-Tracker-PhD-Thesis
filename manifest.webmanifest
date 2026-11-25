@@ -1,6 +1,6 @@
 {
-  "name": "PhD Thesis Correction Tracker",
-  "short_name": "Correction Tracker",
+  "name": "Thesis Correction",
+  "short_name": "Thesis Correction",
   "description": "Offline tracker for thesis corrections. Your data stays on your phone.",
   "start_url": "./",
   "scope": "./",
