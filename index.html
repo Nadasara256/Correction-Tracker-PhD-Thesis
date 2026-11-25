@@ -1765,7 +1765,7 @@ function render(){
   if(RO)main.append(roBanner());
   var nz=state.empty?null:backupNudge();if(nz)main.append(nz);
   main.append(v);
-  main.append(el('div',{class:'credit',text:'@nadasara256'}));
+  main.append(el('div',{class:'credit sm',text:'© 2026 @nadasara256. All rights reserved.'}));
   if(state.empty)document.getElementById('nav').textContent='';else renderNav();
   setStatus();
   window.scrollTo(0,y);
