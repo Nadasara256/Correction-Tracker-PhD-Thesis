@@ -1473,6 +1473,9 @@ function ensureState(s){
   if(!s.ui.open)s.ui.open={};
   if(!s.meta)s.meta={lastBackup:0};
   if(!s.keyDates)s.keyDates=[];
+  if(!s.meta.plainMonths&&Array.isArray(s.weeks)){
+    s.weeks.forEach(function(w){if(typeof w.group==='string')w.group=w.group.replace(/\s*\([^)]*\)\s*$/,'').replace(/\s+onward$/i,'').trim();});
+    s.meta.plainMonths=1;}
   if(Array.isArray(s.about))s.about=s.about.map(migAbout).filter(function(x){return x!==null;});
   if(!Array.isArray(s.lab))s.lab=[];
   if(!Array.isArray(s.meetings))s.meetings=[];
