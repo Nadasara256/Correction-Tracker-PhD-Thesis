@@ -310,6 +310,14 @@ nav{background:var(--card-a);-webkit-backdrop-filter:blur(8px);backdrop-filter:b
 .acts.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:2px}
 .acts.grid2 .btn{width:100%;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.25}
 .credit.sm{font-size:13px;margin:22px 0 4px;font-weight:600}
+/* ---- re-plan drag ---- */
+.task .dh{flex:none;width:46px;height:46px;display:grid;place-items:center;color:var(--acc);border:0;background:none;touch-action:none;cursor:grab;border-radius:10px}
+.task .dh svg{width:22px;height:22px}
+.task.dragging{opacity:.3}
+.dragghost{position:fixed!important;z-index:90;pointer-events:none;background:var(--card);border:2px solid var(--acc);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.3);margin:0;padding:2px 4px;transform:scale(1.02);opacity:.97}
+.dropline{position:fixed;z-index:89;height:3px;border-radius:3px;background:var(--acc);pointer-events:none;box-shadow:0 0 0 2px rgba(14,138,126,.25)}
+.card.week.droptarget{outline:3px solid var(--acc);outline-offset:-1px}
+body.dragmode{-webkit-user-select:none;user-select:none}
 </style>
 </head>
 <body>
@@ -382,6 +390,7 @@ var ICON={
   eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   pen:'<path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
   search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>',
+  grip:'<circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/>',
   close:'<path d="M6 6l12 12M18 6L6 18"/>',
   more:'<circle cx="5" cy="12" r="1.7"/><circle cx="12" cy="12" r="1.7"/><circle cx="19" cy="12" r="1.7"/>'
 };
@@ -593,11 +602,17 @@ function editItem(list,i){
     var t=field(box,'Task','textarea',x.t);
     var n=field(box,'Note (optional)','textarea',x.note||'',{ph:'e.g. waiting for a delivery'});
     var st=field(box,'Status','select',x.done?'done':(x.st||''),{options:STATUS});
+    var curW=state.weeks.filter(function(w){return w.tasks===list;})[0],bsel=null;
+    if(curW)bsel=field(box,'Block (move to another block or month)','select',curW.id,{options:state.weeks.map(function(w){return [w.id,w.title+' ('+range(w.start,w.end)+')'];})});
     box.append(el('div',{class:'acts'},
       el('button',{class:'btn pri',text:'Save',onclick:function(){
         var v=t.value.trim();if(!v){t.focus();return;}
         x.t=v;x.note=n.value.trim();
         if(st.value==='done'){x.done=true;x.st='';}else{x.done=false;x.st=st.value;}
+        if(bsel&&bsel.value!==curW.id){
+          var dest=state.weeks.filter(function(w){return w.id===bsel.value;})[0];
+          if(dest){list.splice(i,1);dest.tasks.push(x);state.ui.open[dest.id]=true;}
+        }
         close();save(true);render();}})));
     box.append(el('div',{class:'acts'},
       el('button',{class:'btn sm',text:'Move up',onclick:function(){if(i>0){var a=list.splice(i,1)[0];list.splice(i-1,0,a);close();save(true);render();}}}),
@@ -620,20 +635,86 @@ function toggleItem(x,list){
   if(x.done){if(list&&list.length>1&&list.every(function(i){return i.done;}))SFX.done();else SFX.tick();}else SFX.untick();
   save(true);render();
 }
-function taskRow(list,i){
-  var x=list[i];
+function taskRow(list,i,wi){
+  var x=list[i],drag=(typeof wi==='number'&&REPLAN&&!RO);
   var tags=[];
   if(x.st==='doing')tags.push(el('span',{class:'tag doing',text:'Doing'}));
   if(x.st==='blocked')tags.push(el('span',{class:'tag blocked',text:'Blocked'}));
   if(RO)return el('div',{class:'task'+(x.done?' done':'')},
     el('div',{class:'cb static'},el('i',null,icon('check'))),
     el('div',{class:'tt ro'},el('div',{class:'tx'},x.t,tags),x.note?el('div',{class:'nt',text:x.note}):null));
-  return el('div',{class:'task'+(x.done?' done':'')},
+  var row=el('div',{class:'task'+(x.done?' done':''),'data-ti':(typeof wi==='number')?String(i):null},
     el('button',{class:'cb','aria-label':x.done?'Mark not done':'Mark done',onclick:function(){toggleItem(x,list);}},el('i',null,icon('check'))),
     el('div',{class:'tt',onclick:function(){editItem(list,i);}},
       el('div',{class:'tx'},x.t,tags),
       x.note?el('div',{class:'nt',text:x.note}):null),
-    el('button',{class:'ed','aria-label':'Edit task',onclick:function(){editItem(list,i);}},icon('pen')));
+    drag?el('button',{class:'dh','aria-label':'Drag to move this task',onpointerdown:function(ev){dragStart(ev,wi,i,row);}},icon('grip'))
+        :el('button',{class:'ed','aria-label':'Edit task',onclick:function(){editItem(list,i);}},icon('pen')));
+  return row;
+}
+
+/* ---------- re-plan: drag a task to another block ---------- */
+var REPLAN=false;
+function moveTask(fw,fi,tw,ti){
+  var from=state.weeks[fw],to=state.weeks[tw];
+  if(!from||!to)return;
+  if(fw===tw&&(ti===fi||ti===fi+1))return;
+  withUndo('Moved to “'+to.title+'”',function(){
+    var x=from.tasks.splice(fi,1)[0];
+    if(fw===tw&&ti>fi)ti--;
+    to.tasks.splice(ti,0,x);
+    state.ui.open[to.id]=true;
+  });
+}
+function dragStart(ev,wi,ti,row){
+  if(ev.button!==undefined&&ev.button>0)return;
+  ev.preventDefault();
+  var h=ev.currentTarget;try{h.setPointerCapture(ev.pointerId);}catch(e){}
+  var rect=row.getBoundingClientRect(),offY=ev.clientY-rect.top;
+  var ghost=row.cloneNode(true);ghost.classList.add('dragghost');
+  ghost.style.width=rect.width+'px';ghost.style.left=rect.left+'px';ghost.style.top=rect.top+'px';
+  document.body.append(ghost);
+  var line=el('div',{class:'dropline',style:'display:none'});document.body.append(line);
+  row.classList.add('dragging');document.body.classList.add('dragmode');
+  var last={x:ev.clientX,y:ev.clientY},tgt=null,hi=null,raf=0,done=false;
+  if(navigator.vibrate){try{navigator.vibrate(12);}catch(e){}}
+  SFX.tap();
+  function target(){
+    ghost.style.top=(last.y-offY)+'px';
+    var n=document.elementFromPoint(last.x,last.y),card=n&&n.closest?n.closest('.card.week'):null;
+    if(hi&&hi!==card)hi.classList.remove('droptarget');
+    hi=card;tgt=null;line.style.display='none';
+    if(!card)return;
+    var tw=+card.getAttribute('data-wi'),trow=n.closest('.task');
+    if(trow&&card.contains(trow)&&trow.getAttribute('data-ti')!==null){
+      card.classList.remove('droptarget');
+      var tix=+trow.getAttribute('data-ti');
+      if(tw===wi&&tix===ti)return;
+      var r=trow.getBoundingClientRect(),after=last.y>r.top+r.height/2;
+      tgt={w:tw,i:tix+(after?1:0)};
+      line.style.cssText='display:block;left:'+r.left+'px;width:'+r.width+'px;top:'+((after?r.bottom:r.top)-1.5)+'px';
+    }else{
+      tgt={w:tw,i:state.weeks[tw].tasks.length};card.classList.add('droptarget');
+    }
+  }
+  function tick(){
+    if(done)return;
+    var vh=window.innerHeight,sp=0;
+    if(last.y<115)sp=-Math.ceil((115-last.y)/5);else if(last.y>vh-150)sp=Math.ceil((last.y-(vh-150))/5);
+    if(sp)window.scrollBy(0,Math.max(-24,Math.min(24,sp)));
+    target();raf=requestAnimationFrame(tick);
+  }
+  function finish(commit){
+    if(done)return;done=true;cancelAnimationFrame(raf);
+    ghost.remove();line.remove();row.classList.remove('dragging');document.body.classList.remove('dragmode');
+    if(hi)hi.classList.remove('droptarget');
+    var t=tgt;
+    if(commit&&t)moveTask(wi,ti,t.w,t.i);
+  }
+  h.addEventListener('pointermove',function(e){last.x=e.clientX;last.y=e.clientY;});
+  h.addEventListener('pointerup',function(){finish(true);});
+  h.addEventListener('pointercancel',function(){finish(false);});
+  raf=requestAnimationFrame(tick);
 }
 
 /* ---------- TIMELINE ---------- */
@@ -667,7 +748,9 @@ function timelineView(){
     if(n){if(!isOpen(f.id,true)){state.ui.open[f.id]=true;save();render();n=document.getElementById('w-'+f.id);}n.scrollIntoView({behavior:'smooth',block:'start'});}}}));
   tools.append(el('button',{class:'btn sm',text:'Expand all',onclick:function(){state.weeks.forEach(function(w){state.ui.open[w.id]=true;});save();render();}}));
   tools.append(el('button',{class:'btn sm',text:'Collapse all',onclick:function(){state.weeks.forEach(function(w){state.ui.open[w.id]=false;});save();render();}}));
+  if(!RO)tools.append(el('button',{class:'btn sm'+(REPLAN?' pri':''),text:REPLAN?'Done re-planning':'Re-plan (drag tasks)',onclick:function(){REPLAN=!REPLAN;render();}}));
   root.append(tools);
+  if(REPLAN&&!RO)root.append(el('div',{class:'warnbox',style:'margin-bottom:10px'},el('b',{text:'Re-plan mode. '}),'Press and hold the ⋮⋮ handle at the right of a task, then drag it onto any block, even a closed one, or between tasks. The page scrolls when you drag near the top or bottom. Tap the task text to edit it.'));
 
   var lastGroup=null;
   state.weeks.forEach(function(w,wi){
@@ -679,14 +762,14 @@ function timelineView(){
     else if(isFocus)tags.push(el('span',{class:'tag next',text:'Up next'}));
     if(info.complete)tags.push(el('span',{class:'tag done',text:'Done'}));
     else if(info.overdue)tags.push(el('span',{class:'tag late',text:'Overdue'}));
-    var c=el('div',{class:'card week'+(open?' open':'')+(info.pos==='now'?' now':''),id:'w-'+w.id});
+    var c=el('div',{class:'card week'+(open?' open':'')+(info.pos==='now'?' now':''),id:'w-'+w.id,'data-wi':String(wi)});
     c.append(el('button',{class:'wh','aria-expanded':open?'true':'false',onclick:function(){state.ui.open[w.id]=!open;save();render();}},
       el('div',{class:'t'},el('b',null,w.title,tags),el('span',{text:range(w.start,w.end)})),
       el('span',{class:'cnt',text:info.done+'/'+info.total}),icon('chev','chev')));
     if(open){
       var body=el('div',{class:'wb'});
       if(!w.tasks.length)body.append(el('div',{class:'empty small',text:'No tasks yet.'}));
-      w.tasks.forEach(function(_,i){body.append(taskRow(w.tasks,i));});
+      w.tasks.forEach(function(_,i){body.append(taskRow(w.tasks,i,wi));});
       if(!RO)body.append(el('div',{class:'wf'},
         el('button',{class:'btn sm',text:'+ Add task',onclick:function(){addItemTo(w.tasks);}}),
         el('button',{class:'btn sm',text:'Edit block / dates',onclick:function(){editWeek(wi);}})));
@@ -993,13 +1076,6 @@ function openSettings(){
       el('button',{class:'btn',text:'Restore from a backup file',onclick:function(){fi.click();}}),
       el('button',{class:'btn bad',text:emp?'Clear all data on this phone':'Reset to the original plan',onclick:function(){close();confirmSheet(emp?'Clear everything?':'Reset everything?',emp?'This removes all your data from this phone. You would need to import your data file again. Save a backup first if unsure.':'All ticks, notes and edits are replaced by the original plan from your doc. Save a backup first if unsure.',emp?'Clear':'Reset',function(){withUndo(emp?'Data cleared':'Reset to original plan',function(){state=clone(SEED);});},true);}})));
     box.append(el('hr'));
-    box.append(el('h3',{text:'Share progress with supervisors',style:'font-size:15px;margin-bottom:6px'}));
-    box.append(el('p',{class:'small muted',style:'margin-bottom:8px',text:'Best for iPhones. A PDF or a text message opens on any phone with nothing to install. Both show your progress as of today.'}));
-    box.append(el('div',{class:'acts'},
-      el('button',{class:'btn pri',text:'PDF progress report',onclick:function(){close();openReport('full');}}),
-      el('button',{class:'btn',text:'Examiner response PDF',onclick:function(){close();openReport('resp');}}),
-      el('button',{class:'btn',text:'Text summary',onclick:function(){close();textSheet('Progress summary',summaryText(),'Share it to WhatsApp or email, or copy and paste it.','PhD thesis correction progress');}})));
-    box.append(el('hr'));
     box.append(el('h3',{text:'View-only app copy (Android and computers)',style:'font-size:15px;margin-bottom:6px'}));
     box.append(el('p',{class:'small muted',style:'margin-bottom:6px',text:'A copy of this app that cannot be edited. iPhones usually cannot open it from a message, so use the PDF above for them. It is a snapshot and does not update by itself.'}));
     var incl=el('input',{type:'checkbox'});
@@ -1009,7 +1085,6 @@ function openSettings(){
       el('button',{class:'btn'+(navigator.canShare?'':' pri'),text:'Save view-only copy',onclick:function(){downloadSnapshot(incl.checked);}})));
     box.append(el('hr'));
     box.append(el('div',{class:'acts'},
-      el('button',{class:'btn',text:'Calendar reminders',onclick:function(){close();openCalendarExport();}}),
       el('button',{class:'btn',text:'Key dates',onclick:function(){close();editKeyDates();}})));
     var tsel=field(box,'Appearance','select',state.ui.theme||'auto',{options:[['auto','Match phone'],['light','Light'],['dark','Dark']]});
     tsel.addEventListener('change',function(){state.ui.theme=tsel.value;applyTheme();save(true);});
@@ -1544,7 +1619,7 @@ function moreView(){
   }else c.append(el('p',{class:'small muted',text:'Add timeline blocks with dates and tasks to see the chart.'}));
   root.append(c);
   if(!RO){
-    root.append(el('div',{class:'grp',text:'Share and export'}));
+    root.append(el('div',{class:'grp',text:'Share progress and export'}));
     var d=el('div',{class:'card'});
     [['PDF progress report','Overview and full detail for your supervisors',function(){openReport('full');},true],
      ['Examiner response PDF','Landscape table of comments, corrections made and locations',function(){openReport('resp');},false],
