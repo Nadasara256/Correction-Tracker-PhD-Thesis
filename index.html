@@ -133,6 +133,14 @@ nav button.on{color:var(--acc)}
 .pb p.intro{font-size:14px;color:var(--mut);margin:8px 6px}
 .pb h4{font-size:14px;margin:14px 6px 2px;color:var(--acc);display:flex;justify-content:space-between;gap:8px}
 .pb h4 span{color:var(--mut);font-weight:600;font-size:13px}
+.pb h4.subh{cursor:pointer;align-items:center;min-height:40px;margin:10px 0 0;padding:0 6px;border-radius:10px;-webkit-tap-highlight-color:transparent}
+.pb h4.subh>div{flex:1;min-width:0}
+.pb h4.subh .chev{width:18px;height:18px;transform:rotate(0)}
+.pb h4.subh.open .chev{transform:rotate(90deg)}
+button.grp.gh{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;text-align:left;font:inherit;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);font-weight:700;margin:14px 0 4px;padding:10px 4px;min-height:44px}
+button.grp.gh>span{flex:1;min-width:0}
+button.grp.gh .chev{width:18px;height:18px;transform:rotate(0)}
+button.grp.gh.open .chev{transform:rotate(90deg)}
 .quote{border-left:3px solid var(--acc);margin:8px 6px;padding:6px 10px;background:var(--soft);border-radius:0 8px 8px 0;font-size:15px}
 .tbl{overflow-x:auto;margin:8px 6px;border:1px solid var(--line);border-radius:10px}
 .tbl table{border-collapse:collapse;font-size:13px;min-width:100%}
@@ -999,6 +1007,9 @@ function checklistView(){
   si.addEventListener('input',function(){ui.q=si.value;save();var pos=si.selectionStart;render();var n=document.querySelector('input.search');if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(e){}}});
   root.append(si);
   root.append(el('label',{class:'chk'},el('input',{type:'checkbox',checked:ui.hideDone?true:null,onchange:function(e){ui.hideDone=e.target.checked;save();render();}}),'Hide finished items'));
+  root.append(el('div',{class:'tools'},
+    el('button',{class:'btn sm',text:'Expand all',onclick:function(){state.checklist.forEach(function(p){state.ui.open['p'+p.id]=true;p.subs.forEach(function(x,i){state.ui.open['s'+p.id+'-'+i]=true;});});save();render();}}),
+    el('button',{class:'btn sm',text:'Collapse all',onclick:function(){state.checklist.forEach(function(p){state.ui.open['p'+p.id]=false;});save();render();}})));
 
   var shown=0;
   state.checklist.forEach(function(p){
@@ -1039,9 +1050,11 @@ function partBody(p,q,hide){
       addItemTo(l);}})));
     if(!frag.length||(q||hide)&&!n)return;
     count+=n;
+    var subOpen=true;
     if(isSub){var its=[];sectionLists(s).forEach(function(b){its=its.concat(b.items);});var dd=its.filter(function(x){return x.done;}).length;
-      node.append(el('h4',null,el('div',{text:s.title}),el('span',{text:dd+'/'+its.length})));}
-    frag.forEach(function(f){node.append(f);});
+      var sk='s'+p.id+'-'+p.subs.indexOf(s);subOpen=(q||hide)?true:isOpen(sk,true);
+      node.append(el('h4',{class:'subh'+(subOpen?' open':''),role:'button',tabindex:'0','aria-expanded':subOpen?'true':'false',onclick:function(){state.ui.open[sk]=!subOpen;save();render();}},el('div',{text:s.title}),el('span',{text:dd+'/'+its.length}),icon('chev','chev')));}
+    if(subOpen)frag.forEach(function(f){node.append(f);});
   }
   sec(p,false);
   p.subs.forEach(function(s){sec(s,true);});
@@ -1081,7 +1094,13 @@ function responseView(){
   var sel=el('select',{onchange:function(e){ui.rsStatus=e.target.value;save();render();}});
   [['ALL','All statuses'],['open','Not finished'],['todo','To do'],['doing','Doing'],['done','Done'],['na','No action']].forEach(function(o){var op=el('option',{value:o[0],text:o[1]});if(ui.rsStatus===o[0])op.selected=true;sel.append(op);});
   root.append(el('div',{class:'seg2'},sel));
-  if(!RO)root.append(el('div',{class:'tools'},el('button',{class:'btn sm',text:'Save responses as PDF',onclick:function(){openReport('resp');}})));
+  root.append(el('div',{class:'tools'},
+    el('button',{class:'btn sm',text:'Expand all',onclick:function(){state.response.forEach(function(g){state.ui.open['rg'+g.id]=true;});save();render();}}),
+    el('button',{class:'btn sm',text:'Collapse all',onclick:function(){state.response.forEach(function(g){state.ui.open['rg'+g.id]=false;});save();render();}})));
+  if(!RO){
+    var wfi=el('input',{type:'file',accept:'.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document',style:'display:none',onchange:function(e){var f=e.target.files[0];e.target.value='';if(f)wordImport(f);}});
+    root.append(el('div',{class:'tools'},el('button',{class:'btn sm',text:'Update from Word file',onclick:function(){wfi.click();}}),el('button',{class:'btn sm',text:'Save responses as PDF',onclick:function(){openReport('resp');}}),wfi));
+  }
 
   var shown=0;
   state.response.forEach(function(g,gi){
@@ -1096,7 +1115,9 @@ function responseView(){
     if((q||ui.rsStatus!=='ALL')&&!list.length)return;
     shown++;
     var gd=g.rows.filter(rowDone).length;
-    root.append(el('div',{class:'grp',text:g.name+' · '+gd+'/'+g.rows.length}));
+    var gOpen=(q||ui.rsStatus!=='ALL')?true:isOpen('rg'+g.id,true);
+    root.append(el('button',{class:'grp gh'+(gOpen?' open':''),'aria-expanded':gOpen?'true':'false',onclick:function(){state.ui.open['rg'+g.id]=!gOpen;save();render();}},el('span',{text:g.name+' · '+gd+'/'+g.rows.length}),icon('chev','chev')));
+    if(!gOpen)return;
     if(g.intro&&!q&&ui.rsStatus==='ALL')root.append(el('p',{class:'small muted',text:g.intro,style:'margin:0 4px 10px'}));
     list.forEach(function(p){root.append(rowCard(g,p[0],p[1]));});
     var acts=el('div',{class:'tools'},
@@ -1146,6 +1167,123 @@ function editRow(g,ri){
       if(isNew)g.rows.push(r);
       close();save(true);render();}})));
     if(!isNew)box.append(el('div',{class:'acts'},el('button',{class:'btn sm bad',text:'Delete comment',onclick:function(){close();withUndo('Comment deleted',function(){g.rows.splice(ri,1);});}})));
+  });
+}
+
+/* ---------- update Responses from a Word (.docx) file ---------- */
+function u16(d,o){return d[o]|(d[o+1]<<8);}
+function u32(d,o){return (d[o]|(d[o+1]<<8)|(d[o+2]<<16)|(d[o+3]<<24))>>>0;}
+function inflateRaw(u8){
+  var ds=new DecompressionStream('deflate-raw');
+  return new Response(new Blob([u8]).stream().pipeThrough(ds)).arrayBuffer().then(function(b){return new Uint8Array(b);});
+}
+function zipEntry(buf,wanted){
+  var d=new Uint8Array(buf),e=-1,i;
+  for(i=d.length-22;i>=Math.max(0,d.length-70000);i--){if(u32(d,i)===0x06054b50){e=i;break;}}
+  if(e<0)return Promise.reject(new Error('not a zip'));
+  var n=u16(d,e+10),o=u32(d,e+16);
+  for(var k=0;k<n;k++){
+    if(u32(d,o)!==0x02014b50)break;
+    var method=u16(d,o+10),csz=u32(d,o+20),nl=u16(d,o+28),xl=u16(d,o+30),cl=u16(d,o+32),lh=u32(d,o+42);
+    var name=new TextDecoder('utf-8').decode(d.subarray(o+46,o+46+nl));
+    if(name===wanted){
+      var st=lh+30+u16(d,lh+26)+u16(d,lh+28),raw=d.subarray(st,st+csz);
+      if(method===0)return Promise.resolve(raw);
+      if(method===8)return inflateRaw(raw);
+      return Promise.reject(new Error('unsupported zip'));
+    }
+    o+=46+nl+xl+cl;
+  }
+  return Promise.reject(new Error('no document'));
+}
+var WNS='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+function wText(node){
+  var out='';
+  (function walk(n){
+    for(var c=n.firstChild;c;c=c.nextSibling){
+      if(c.nodeType!==1)continue;
+      var ln=c.localName;
+      if(ln==='t')out+=c.textContent;
+      else if(ln==='tab')out+=' ';
+      else if(ln==='br'||ln==='cr')out+='\n';
+      else if(ln==='p'&&out&&out.charAt(out.length-1)!=='\n'){out+='\n';walk(c);}
+      else if(ln!=='delText'&&ln!=='instrText')walk(c);
+    }
+  })(node);
+  return out.replace(/[ \t]+\n/g,'\n').replace(/\n{2,}/g,'\n').trim();
+}
+function docxRows(buf){
+  return zipEntry(buf,'word/document.xml').then(function(u8){
+    var xml=new DOMParser().parseFromString(new TextDecoder('utf-8').decode(u8),'application/xml');
+    var rows=[],tbls=xml.getElementsByTagNameNS(WNS,'tbl');
+    for(var t=0;t<tbls.length;t++){
+      var trs=tbls[t].getElementsByTagNameNS(WNS,'tr');
+      for(var r=0;r<trs.length;r++){
+        if(trs[r].parentNode!==tbls[t])continue;
+        var cells=[];
+        for(var c=trs[r].firstChild;c;c=c.nextSibling){if(c.nodeType===1&&c.localName==='tc')cells.push(wText(c));}
+        if(cells.length>=2&&/^[A-Za-z]{1,3}\d+[A-Za-z]?$/.test((cells[0]||'').trim()))rows.push(cells);
+      }
+    }
+    return rows;
+  });
+}
+function nkey(x){return String(x||'').trim().toUpperCase();}
+function wordImport(file){
+  if(typeof DecompressionStream==='undefined'||!file.stream){toast('This browser cannot read Word files. Update Chrome, then try again.');return;}
+  file.arrayBuffer().then(docxRows).then(function(rows){
+    if(!rows.length){toast('No comment table found in that file.');return;}
+    var byNo={},seen={};
+    state.response.forEach(function(g){g.rows.forEach(function(r){byNo[nkey(r.no)]=[g,r];});});
+    var plan={fresh:[],changed:[],same:0,add:[],skip:[]};
+    rows.forEach(function(c){
+      var no=nkey(c[0]);if(seen[no])return;seen[no]=1;
+      var made=(c[3]||'').trim(),loc=(c[4]||'').trim(),hit=byNo[no];
+      if(hit){
+        var r=hit[1],ch=[];
+        if(made&&made!==(r.made||'').trim())ch.push(['made',made]);
+        if(loc&&loc!==(r.loc||'').trim())ch.push(['loc',loc]);
+        if(!ch.length)plan.same++;
+        else if(ch.some(function(x){return (r[x[0]]||'').trim();}))plan.changed.push([r.no,r,ch]);
+        else plan.fresh.push([r.no,r,ch]);
+      }else{
+        var pre=no.replace(/\d.*$/,''),tg=null;
+        state.response.forEach(function(g){if(!tg&&g.rows.some(function(r){return nkey(r.no).replace(/\d.*$/,'')===pre;}))tg=g;});
+        if(tg&&(c[1]||'').trim())plan.add.push([no,tg,c]);else plan.skip.push(no);
+      }
+    });
+    wordSheet(file.name,rows.length,plan);
+  }).catch(function(){toast('Could not read that Word file. Is it a .docx?');});
+}
+function wordSheet(fname,total,plan){
+  var nothing=!plan.fresh.length&&!plan.changed.length&&!plan.add.length;
+  openSheet('Update from Word file',function(box,close){
+    box.append(el('p',{class:'muted',style:'margin-bottom:8px',text:fname+': '+total+' numbered comments found.'}));
+    function line(txt){box.append(el('p',{style:'margin:4px 0',text:txt}));}
+    function nums(a){var x=a.map(function(p){return p[0];});return x.slice(0,12).join(', ')+(x.length>12?' and '+(x.length-12)+' more':'');}
+    if(plan.fresh.length)line('New text for '+plan.fresh.length+' comment'+(plan.fresh.length>1?'s':'')+': '+nums(plan.fresh)+'.');
+    if(plan.changed.length)line('Word has different text for '+plan.changed.length+' comment'+(plan.changed.length>1?'s':'')+': '+nums(plan.changed)+'. The Word text will replace what the app has (you can undo).');
+    if(plan.add.length)line('New comments in Word that the app does not have yet: '+nums(plan.add)+'. They will be added.');
+    if(plan.same)line(plan.same+' comment'+(plan.same>1?'s are':' is')+' already the same.');
+    if(plan.skip.length)line('Not placed (no matching section in the app): '+plan.skip.slice(0,12).join(', ')+'.');
+    box.append(el('p',{class:'small muted',style:'margin:8px 0',text:'Only “Correction made” and “Location” are copied. Empty cells in Word never erase what the app has, and statuses and private notes are not touched.'}));
+    if(nothing){box.append(el('div',{class:'acts'},el('button',{class:'btn',text:'Close',onclick:close})));return;}
+    var cb=el('input',{type:'checkbox',id:'wdone',style:'width:24px;height:24px;min-height:0;flex:none;margin:1px 0 0;padding:0'});
+    box.append(el('label',{style:'display:flex;gap:12px;justify-content:flex-start;align-items:flex-start;margin:8px 0 14px;text-align:left'},cb,el('span',{text:'Also mark a comment as Done when its “Correction made” is filled in'})));
+    box.append(el('div',{class:'acts'},
+      el('button',{class:'btn',text:'Cancel',onclick:close}),
+      el('button',{class:'btn pri',text:'Update the app',onclick:function(){
+        var md=cb.checked;close();
+        withUndo('Updated from Word',function(){
+          function apply(r,ch){ch.forEach(function(x){r[x[0]]=x[1];});if(md&&(r.made||'').trim()&&(r.st==='todo'||r.st==='doing'))r.st='done';}
+          plan.fresh.concat(plan.changed).forEach(function(p){apply(p[1],p[2]);});
+          plan.add.forEach(function(p){
+            var c=p[2],r={id:uid(),no:c[0].trim(),comment:(c[1]||'').trim(),action:(c[2]||'').trim(),made:'',loc:'',st:'todo',note:''};
+            var ch=[],m2=(c[3]||'').trim(),l2=(c[4]||'').trim();
+            if(m2)ch.push(['made',m2]);if(l2)ch.push(['loc',l2]);
+            apply(r,ch);
+            p[1].rows.push(r);});
+        });}})));
   });
 }
 function copyGroup(g){
