@@ -1303,12 +1303,6 @@ function downloadBackup(){
   state.meta.lastBackup=Date.now();save(true);
   SFX.ok();toast('Backup saved to your Downloads folder.');
 }
-function shareBackup(){
-  var f;try{f=new File([JSON.stringify(backupObj(),null,1)],backupName(),{type:'application/json'});}catch(e){return downloadBackup();}
-  if(navigator.canShare&&navigator.canShare({files:[f]})){
-    navigator.share({files:[f],title:'Thesis tracker backup'}).then(function(){state.meta.lastBackup=Date.now();save(true);render();}).catch(function(){});
-  }else downloadBackup();
-}
 function importBackup(file,first){
   var rd=new FileReader();
   rd.onload=function(){
@@ -1340,8 +1334,7 @@ function openSettings(){
     var emp=SEED&&SEED.empty;
     var fi=el('input',{type:'file',accept:'.json,application/json',style:'display:none',onchange:function(e){var f=e.target.files[0];if(f){close();importBackup(f);}}});
     box.append(fi,el('div',{class:'acts grid2'},
-      el('button',{class:'btn pri',text:'Save backup file',onclick:function(){downloadBackup();}}),
-      (navigator.canShare?el('button',{class:'btn',text:'Share backup…',onclick:function(){shareBackup();}}):null),
+      el('button',{class:'btn pri',style:'grid-column:1/-1',text:'Save backup file',onclick:function(){downloadBackup();}}),
       el('button',{class:'btn',text:'Restore from a backup file',onclick:function(){fi.click();}}),
       el('button',{class:'btn bad',text:emp?'Clear all data on this phone':'Reset to the original plan',onclick:function(){close();confirmSheet(emp?'Clear everything?':'Reset everything?',emp?'This removes all your data from this phone. You would need to import your data file again. Save a backup first if unsure.':'All ticks, notes and edits are replaced by the original plan from your doc. Save a backup first if unsure.',emp?'Clear':'Reset',function(){withUndo(emp?'Data cleared':'Reset to original plan',function(){state=clone(SEED);});},true);}})));
     box.append(el('hr'));
