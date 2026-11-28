@@ -1,6 +1,6 @@
 // Offline cache for the thesis tracker. Online: always fetch the latest files. Offline: use the saved copy.
 // Change VERSION whenever you want phones to drop their old saved files.
-var VERSION = 'thesis-tracker-v3';
+var VERSION = 'thesis-tracker-v4';
 var FILES = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png',
              './icons/icon-maskable-512.png', './icons/apple-touch-icon.png', './icons/favicon-48.png'];
 self.addEventListener('install', function (e) {
